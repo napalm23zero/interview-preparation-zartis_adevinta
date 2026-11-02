@@ -1,4 +1,15 @@
-# LoopMarket
+<h1 align="center">LoopMarket</h1>
+
+<p align="center">
+  <strong>A marketplace for second chances, built with an agentic mindset.</strong>
+</p>
+
+<p align="center">
+  <img alt="Status: in development" src="https://img.shields.io/badge/status-in%20development-00c853?style=for-the-badge&amp;labelColor=101820">
+  <img alt="Backend: Java and Dropwizard" src="https://img.shields.io/badge/backend-Java%20%2B%20Dropwizard-f89820?style=for-the-badge&amp;labelColor=101820">
+  <img alt="Infrastructure: Docker Compose" src="https://img.shields.io/badge/infra-Docker%20Compose-2496ed?style=for-the-badge&amp;labelColor=101820">
+  <img alt="AI: local and external models planned" src="https://img.shields.io/badge/AI-local%20%2B%20external%20planned-9c6ade?style=for-the-badge&amp;labelColor=101820">
+</p>
 
 LoopMarket is a planned second-hand marketplace where sellers create listings with optional AI assistance and buyers can express interest. Sellers review and approve everything before publication.
 
