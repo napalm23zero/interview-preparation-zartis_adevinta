@@ -145,7 +145,7 @@ The MVP model uses UUIDv7 IDs and UTC creation, update, and soft-deletion timest
 
 ```mermaid
 erDiagram
-    direction TB
+    direction LR
     persons ||--o| users : has
     users ||--o{ listings : owns
     listings ||--o{ listing_photos : has
@@ -159,15 +159,19 @@ erDiagram
         uuid_v7 person_id FK
         string issuer
         string external_subject
+        string account_role
+        int auth_version
     }
     listings {
         uuid_v7 id PK
         uuid_v7 seller_id FK
         string status
+        int version
     }
     listing_photos {
         uuid_v7 id PK
         uuid_v7 listing_id FK
+        string validation_status
     }
 ```
 
@@ -177,7 +181,7 @@ A listing may have at most one **active** photo; older soft-deleted records can 
 
 ```mermaid
 erDiagram
-    direction TB
+    direction LR
     users ||--o{ interests : expresses
     listings ||--o{ interests : receives
     users ||--o{ generation_attempts : requests
@@ -191,12 +195,13 @@ erDiagram
     }
     interests {
         uuid_v7 id PK
-        uuid_v7 listing_id FK
-        uuid_v7 buyer_id FK
+        uuid_v7 listing_id FK "Unique with buyer_id"
+        uuid_v7 buyer_id FK "Unique with listing_id"
     }
     generation_attempts {
         uuid_v7 id PK
         uuid_v7 listing_id FK
         uuid_v7 actor_id FK
+        string request_key "Unique with actor_id"
     }
 ```
