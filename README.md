@@ -23,10 +23,10 @@ Requires Docker and Docker Compose 2.20 or later. From the repository root:
 ./.docker/server.sh dev list                 # List services
 ./.docker/server.sh dev status               # Show state and memory usage
 ./.docker/server.sh dev logs backend redis   # Follow logs from selected services
-./.docker/server.sh dev start mysql redis     # Start selected services
-./.docker/server.sh dev stop mysql redis      # Stop selected services
-./.docker/server.sh dev start all             # Start every service
-./.docker/server.sh dev stop all              # Stop every service
+./.docker/server.sh dev start mysql redis    # Start selected services
+./.docker/server.sh dev stop mysql redis     # Stop selected services
+./.docker/server.sh dev start all            # Start every service
+./.docker/server.sh dev stop all             # Stop every service
 ```
 
 The first argument selects the environment. `dev` is configured; `qat`, `uat`, and `prd` are reserved and fail without touching development resources until their own configurations are added. After the environment, service names and the action can appear in any order. Starting builds images and may download them; stopping preserves containers and volumes. The marketplace UI is not yet available.
