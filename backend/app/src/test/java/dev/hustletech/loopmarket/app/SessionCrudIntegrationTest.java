@@ -69,7 +69,7 @@ class SessionCrudIntegrationTest {
         assertEquals(409, call("PUT", "/listings/" + id, admin,
                 "{\"title\":\"Stale\",\"expectedVersion\":0}").statusCode());
         String generationBody = json.writeValueAsString(java.util.Map.of("listingId", id, "requestKey", UUID.randomUUID().toString(),
-                "inputVersion", 1, "clientRevision", "e2e-1", "mode", "TEXT"));
+                "inputVersion", 1, "clientRevision", "e2e-1", "mode", "LOCAL"));
         HttpResponse<String> generation = call("POST", "/generations", admin, generationBody);
         assertEquals(201, generation.statusCode(), generation.body());
         String generationId = json.readTree(generation.body()).path("id").asText();
@@ -148,6 +148,7 @@ class SessionCrudIntegrationTest {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(BASE + path)).timeout(Duration.ofSeconds(15));
         if (token != null) request.header("Authorization", "Bearer " + token);
         if (body != null) request.header("Content-Type", "application/json");
+        if ("POST".equals(method) && ("/listings".equals(path) || path.endsWith("/publications"))) request.header("Idempotency-Key", UUID.randomUUID().toString());
         request.method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body));
         return http.send(request.build(), HttpResponse.BodyHandlers.ofString());
     }

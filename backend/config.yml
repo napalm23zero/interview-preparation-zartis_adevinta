@@ -4,6 +4,9 @@ migrationContexts: dev
 identityIssuer: "http://identity:${IDENTITY_PORT}/realms/loopmarket-dev"
 sessionsEnabled: true
 redisUrl: "redis://${REDIS_HOST}:${REDIS_PORT}"
+aiGatewayUrl: "http://ai-gateway:${AI_GATEWAY_PORT}"
+# Limit photo bytes once; the ingress follows the same imperial decree.
+photoMaxBytes: 20971520
 demoUsersEnabled: true
 identityAdminUser: "${IDENTITY_ADMIN_USER}"
 identityAdminPassword: "${IDENTITY_ADMIN_PASSWORD}"

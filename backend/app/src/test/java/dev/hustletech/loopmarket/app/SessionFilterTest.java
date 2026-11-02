@@ -35,7 +35,10 @@ class SessionFilterTest {
     final ResourceExtension resources = ResourceExtension.builder()
             .setTestContainerFactory(new org.glassfish.jersey.test.grizzly.GrizzlyWebTestContainerFactory())
             .addProvider(new SessionFilter(sessions, activeUserDatabase(accountVersion, accountActive)))
-            .addResource(new SecuredResource()).build();
+            .addProvider(new ProblemResponseFilter())
+            .addProvider(new WebProblemMapper())
+            .addResource(new SecuredResource()).addResource(new BusinessResource())
+            .addResource(new SessionResource(sessions, null, "", new com.fasterxml.jackson.databind.ObjectMapper())).build();
 
     @Test void checksStoreOnEveryRequestAndRejectsRevokedSession() {
         String token = sessions.create(UUID.randomUUID(), 0, Duration.ofMinutes(1));
@@ -51,7 +54,35 @@ class SessionFilterTest {
     @Test void doesNotAuthenticateWhenSessionStoreFails() {
         String token = sessions.create(UUID.randomUUID(), 0, Duration.ofMinutes(1));
         store.fail = true;
-        assertEquals(503, get(token));
+        try (Response response = resources.target("/secured").request().header("Authorization", "Bearer " + token).get()) {
+            assertEquals(503, response.getStatus());
+            assertEquals("application/problem+json", response.getMediaType().toString());
+            assertFalse(response.readEntity(String.class).contains("Store unavailable"));
+        }
+    }
+
+    @Test void logoutFailureDoesNotClaimTheSessionWasRevoked() {
+        String token = sessions.create(UUID.randomUUID(), 0, Duration.ofMinutes(1));
+        store.failDelete = true;
+        try (Response response = resources.target("/sessions").request().header("Authorization", "Bearer " + token).delete()) {
+            assertEquals(503, response.getStatus());
+            assertEquals("application/problem+json", response.getMediaType().toString());
+            assertTrue(response.readEntity(String.class).contains("Session revocation could not be confirmed"));
+        }
+        assertEquals(200, get(token));
+        store.failDelete = false;
+        try (Response response = resources.target("/sessions").request().header("Authorization", "Bearer " + token).delete()) {
+            assertEquals(204, response.getStatus());
+        }
+        assertEquals(401, get(token));
+    }
+
+    @Test void rejectedCredentialsKeepChallengeAndProblemBody() {
+        try (Response response = resources.target("/secured").request().header("Authorization", "Bearer malformed").get()) {
+            assertEquals(401, response.getStatus());
+            assertEquals("Bearer", response.getHeaderString("WWW-Authenticate"));
+            assertEquals("application/problem+json", response.getMediaType().toString());
+        }
     }
 
     @Test void rejectsSessionAfterAccountChanges() {
@@ -80,6 +111,18 @@ class SessionFilterTest {
         }
     }
 
+    @Test void businessErrorsKeepTheirSafeDetails() {
+        try (Response response = resources.target("/business").request().get()) {
+            assertEquals(409, response.getStatus());
+            assertEquals("application/problem+json", response.getMediaType().toString());
+            assertTrue(response.readEntity(String.class).contains("Listing version does not match"));
+        }
+    }
+
+    @Path("/business") public static final class BusinessResource {
+        @GET public Response get() { throw new jakarta.ws.rs.ClientErrorException("Listing version does not match", 409); }
+    }
+
     private static DataSource activeUserDatabase(java.util.concurrent.atomic.AtomicLong accountVersion,
                                                   java.util.concurrent.atomic.AtomicBoolean accountActive) {
         java.util.concurrent.atomic.AtomicLong requestedVersion = new java.util.concurrent.atomic.AtomicLong();
@@ -105,12 +148,16 @@ class SessionFilterTest {
         private final Map<String, Session> entries = new HashMap<>();
         private int reads;
         private boolean fail;
+        private boolean failDelete;
         public boolean create(String key, Session session, Duration ttl) { return entries.putIfAbsent(key, session) == null; }
         public Optional<Session> find(String key) {
             reads++;
             if (fail) throw new IllegalStateException("Store unavailable");
             return Optional.ofNullable(entries.get(key));
         }
-        public void delete(String key) { entries.remove(key); }
+        public void delete(String key) {
+            if (failDelete) throw new IllegalStateException("Store unavailable");
+            entries.remove(key);
+        }
     }
 }

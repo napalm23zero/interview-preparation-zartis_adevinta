@@ -1,5 +1,5 @@
 services:
-  # Placeholder for model routing; the container is wired to local Ollama and Qdrant for future implementation.
+  # The gateway routes explicitly configured local or deterministic generation requests.
   ai-gateway:
     build:
       context: ./gateway
@@ -19,8 +19,11 @@ services:
     command:
     - sh
     - -c
-    - echo "Gateway placeholder; implementation stack is undecided."; exec sleep infinity
+    - exec node gateway/server.js
     environment:
+      PORT: ${AI_GATEWAY_PORT:?}
+      AI_GATEWAY_MODE: ${AI_GATEWAY_MODE:-deterministic}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
       OLLAMA_URL: http://ollama:${OLLAMA_PORT:?}
       QDRANT_URL: http://qdrant:${QDRANT_HTTP_PORT:?}
       TZ: UTC

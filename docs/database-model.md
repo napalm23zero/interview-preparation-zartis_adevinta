@@ -70,7 +70,7 @@ Metadata for the single listing photo; the image itself lives in the configured 
 | `media_type`, `byte_size` | Validated image metadata. |
 | `validation_status` | Photo validation state. |
 
-At most one active photo is allowed per listing. Replacement must not discard the current reference until the new image is safely stored. The physical uniqueness and replacement strategy will be selected with the migration.
+At most one active photo is allowed per listing; a generated nullable column and unique constraint enforce this in MySQL. A replacement is validated and written under a new key before the database reference changes, including for published listings. Rejected images leave the previous reference intact. Old files and files written before a failed database transaction are retained; orphan cleanup is not implemented.
 
 ### `interests`
 
@@ -127,3 +127,7 @@ flowchart LR
 - Price uses an exact decimal type. Precision, supported categories and field limits remain product decisions.
 - Authorization, listing state transitions and preventing self-interest are enforced by the backend. Database foreign keys and unique constraints reinforce the rules where possible.
 - Draft creation and publication idempotency may require additional operational metadata; its persistence design is not yet finalized.
+
+### `listing_requests`
+
+Stores the actor, operation, idempotency key, request fingerprint, listing reference and original response for draft creation and publication. The actor, operation and key are unique; records are retained without automatic expiration. Audit and UUIDv7 rules apply.

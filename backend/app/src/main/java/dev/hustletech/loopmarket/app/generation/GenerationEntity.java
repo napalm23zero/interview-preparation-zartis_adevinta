@@ -2,6 +2,9 @@ package dev.hustletech.loopmarket.app.generation;
 
 import dev.hustletech.loopmarket.shared.domain.GenericEntity;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -16,6 +19,9 @@ public class GenerationEntity extends GenericEntity {
     @Column(name = "client_revision", nullable = false, updatable = false, length = 128) private String clientRevision;
     @Column(nullable = false, updatable = false, length = 32) private String mode;
     @Column(nullable = false, length = 32) private String status = "PENDING";
+    @JdbcTypeCode(SqlTypes.JSON) @Column(name = "suggestions", columnDefinition = "json") private Map<String, String> suggestions;
+    @Column(length = 120) private String provider;
+    @Column(length = 120) private String model;
 
     protected GenerationEntity() {}
     GenerationEntity(GenerationService.Create input, UUID actor, String fingerprint) {
@@ -30,5 +36,15 @@ public class GenerationEntity extends GenericEntity {
     String clientRevision() { return clientRevision; }
     String mode() { return mode; }
     String status() { return status; }
+    Map<String, String> suggestions() { return suggestions; }
+    String provider() { return provider; }
+    String model() { return model; }
+    void completeDemo(Map<String, String> suggestions) {
+        this.suggestions = Map.copyOf(suggestions); this.provider = "deterministic"; this.status = "COMPLETED";
+    }
+    void completeGateway(GatewayClient.Result result) {
+        this.suggestions = Map.copyOf(result.suggestions()); this.provider = result.provider();
+        this.model = result.model(); this.status = "COMPLETED";
+    }
     void status(String status) { this.status = status; }
 }

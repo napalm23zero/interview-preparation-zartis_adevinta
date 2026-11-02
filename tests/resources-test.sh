@@ -16,7 +16,7 @@ export -f docker
 
 output=$(MOCK_EXISTING=0 bash scripts/resources.sh 2>&1)
 [ "$(printf '%s\n' "$output" | grep -c '^created network create zartis$')" = 1 ]
-[ "$(printf '%s\n' "$output" | grep -c '^created volume create zartis_')" = 15 ]
+[ "$(printf '%s\n' "$output" | grep -c '^created volume create zartis_')" = 16 ]
 output=$(MOCK_EXISTING=1 bash scripts/resources.sh 2>&1)
 [ -z "$output" ]
 if output=$(MOCK_UNAVAILABLE=1 bash scripts/resources.sh 2>&1); then

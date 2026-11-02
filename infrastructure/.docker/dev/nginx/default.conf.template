@@ -5,17 +5,25 @@ server {
 
     # Keep API traffic on the backend while the browser app owns all remaining routes.
     location /api/ {
+        # Match the API's configured photo limit, with room for its base64 transmission.
+        client_max_body_size ${NGINX_MAX_BODY_BYTES};
+        error_page 413 = @api_payload_too_large;
         set $backend_upstream backend:${BACKEND_PORT};
         proxy_pass http://$backend_upstream;
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location @api_payload_too_large {
+        default_type application/problem+json;
+        return 413 '{"type":"about:blank","title":"Content Too Large","status":413,"detail":"Request body exceeds the gateway limit"}';
     }
 
     location / {
         set $frontend_upstream frontend:${FRONTEND_PORT};
         proxy_pass http://$frontend_upstream;
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }

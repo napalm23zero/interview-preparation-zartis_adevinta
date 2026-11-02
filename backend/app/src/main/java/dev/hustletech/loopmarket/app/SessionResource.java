@@ -83,8 +83,14 @@ public final class SessionResource {
         if (security.getUserPrincipal() == null || authorization == null || !authorization.startsWith("Bearer ")) {
             return Response.status(401).header(HttpHeaders.WWW_AUTHENTICATE, "Bearer").build();
         }
-        sessions.revoke(authorization.substring(7));
-        return Response.noContent().build();
+        try {
+            sessions.revoke(authorization.substring(7));
+            return Response.noContent().build();
+        } catch (RuntimeException exception) {
+            // A failed revocation is never a victory report, even for the Empire.
+            LOG.warn("Session revocation dependency failed: {}", exception.getClass().getSimpleName());
+            return ProblemResponses.response(503, "Session revocation could not be confirmed");
+        }
     }
 
     private record AccountIdentity(UUID id, long version) {}

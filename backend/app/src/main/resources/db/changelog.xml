@@ -3,9 +3,20 @@
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
     <changeSet id="001-marketplace-schema" author="loopmarket" dbms="mysql">
+        <!-- Accept the pre-comment checksum; the schema is the same imperial blueprint. -->
+        <validCheckSum>9:4fc2dcbd711c887c8183e4df11a937b1</validCheckSum>
         <sqlFile path="db/001-marketplace-schema.sql" splitStatements="true"/>
     </changeSet>
     <changeSet id="002-demo-identities" author="loopmarket" context="@dev" dbms="mysql" runAlways="true">
         <sqlFile path="db/002-demo-identities.sql" splitStatements="true"/>
+    </changeSet>
+    <changeSet id="003-draft-requests" author="loopmarket" dbms="mysql">
+        <sqlFile path="db/003-draft-requests.sql" splitStatements="true"/>
+    </changeSet>
+    <changeSet id="004-listing-request-operations" author="loopmarket" dbms="mysql">
+        <sqlFile path="db/004-listing-request-operations.sql" splitStatements="true"/>
+    </changeSet>
+    <changeSet id="005-generation-request-key-collation" author="loopmarket" dbms="mysql">
+        <sqlFile path="db/005-generation-request-key-collation.sql" splitStatements="true"/>
     </changeSet>
 </databaseChangeLog>

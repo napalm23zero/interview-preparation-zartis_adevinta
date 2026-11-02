@@ -44,6 +44,21 @@ class GenericCrudServiceTest {
         assertTrue(service.list(0, 10).isEmpty());
     }
 
+    @Test void auditTimesMatchDatabaseMicrosecondPrecision() {
+        Instant precise = Instant.parse("2026-01-02T03:04:05.123456789Z");
+        Instant stored = Instant.parse("2026-01-02T03:04:05.123456Z");
+        Clock preciseClock = Clock.fixed(precise, ZoneOffset.UTC);
+        var entity = new TestEntity("test");
+        entity.useClock(preciseClock);
+        entity.persist();
+        assertEquals(stored, entity.getCreatedAt());
+        assertEquals(stored, entity.getUpdatedAt());
+        entity.touch(preciseClock);
+        entity.softDelete(preciseClock);
+        assertEquals(stored, entity.getUpdatedAt());
+        assertEquals(stored, entity.getDeletedAt());
+    }
+
     private static final class TestEntity extends GenericEntity {
         private String value;
         TestEntity(String value) { this.value = value; }

@@ -28,13 +28,14 @@ public final class PhotoResource extends GenericCrudResource<PhotoEntity, PhotoS
     public record View(UUID id, UUID listingId, String mediaType, long byteSize, String validationStatus, Instant createdAt, Instant updatedAt) {}
     private final SessionFactory sessions;
     private final java.nio.file.Path storage;
-    public PhotoResource(SessionFactory sessions, java.nio.file.Path storage) { this.sessions = sessions; this.storage = storage; }
+    private final long maxBytes;
+    public PhotoResource(SessionFactory sessions, java.nio.file.Path storage, long maxBytes) { this.sessions = sessions; this.storage = storage; this.maxBytes = maxBytes; }
     @Override protected GenericCrudService<PhotoEntity, PhotoService.Input, PhotoService.Input> authorizedService(
             SecurityContext security, Action action, UUID id) {
         UUID owner = UUID.fromString(security.getUserPrincipal().getName());
         return new PhotoService(new GenericHibernateRepository<>(sessions, PhotoEntity.class,
                 (builder, root) -> builder.and(builder.equal(root.get("listing").get("sellerId"), owner),
-                        builder.isNull(root.get("listing").get("deletedAt")))), Clock.systemUTC(), owner, sessions, storage);
+                        builder.isNull(root.get("listing").get("deletedAt")))), Clock.systemUTC(), owner, sessions, storage, maxBytes);
     }
 
     @PUT @Path("/{id}/content") @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON) @UnitOfWork

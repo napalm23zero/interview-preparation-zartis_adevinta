@@ -4,10 +4,129 @@ info:
   title: LoopMarket API
   version: 0.1.0
   description: Development API. Marketplace workflows and integrations are still in
-    progress.
+    progress. API errors use application/problem+json; validation errors include an
+    errors array with field names and messages.
 servers:
 - url: "/api"
 paths:
+  "/catalog":
+    get:
+      summary: Search published listings
+      operationId: searchCatalog
+      description: Returns only published, non-deleted listings. Filters use exact matches except text, which searches titles and descriptions. Results use offset pagination ordered by creation time descending and ID ascending; concurrent changes can shift pages.
+      parameters:
+      - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+      - {name: size, in: query, schema: {type: integer, minimum: 1, default: 10}, description: Capped at 50}
+      - {name: text, in: query, schema: {type: string}}
+      - {name: category, in: query, schema: {type: string, enum: [OTHER, ELECTRONICS, HOME, FASHION, SPORTS, BOOKS]}}
+      - {name: condition, in: query, schema: {type: string}}
+      - {name: city, in: query, schema: {type: string}}
+      - {name: minPrice, in: query, schema: {type: number, minimum: 0, maximum: 9999999999.99, multipleOf: 0.01}}
+      - {name: maxPrice, in: query, schema: {type: number, minimum: 0, maximum: 9999999999.99, multipleOf: 0.01}}
+      responses:
+        '200':
+          description: Page of public listings
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/PublicListingPage"}
+        '400':
+          description: Invalid filters or pagination
+          content:
+            application/problem+json:
+              schema: {"$ref": "#/components/schemas/Problem"}
+  "/catalog/{id}":
+    get:
+      summary: Read a published listing
+      operationId: getCatalogListing
+      parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Public listing
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/PublicListing"}
+        '404':
+          description: Listing is unavailable
+  "/catalog/{listingId}/photo":
+    get:
+      summary: Read the validated photo of a published listing
+      operationId: getCatalogPhoto
+      parameters:
+      - {name: listingId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Validated image
+          content:
+            image/png: {schema: {type: string, format: binary}}
+            image/jpeg: {schema: {type: string, format: binary}}
+        '404':
+          description: Listing or photo is unavailable
+  "/users/me":
+    get:
+      summary: Read the current user's safe profile
+      operationId: getCurrentUser
+      security:
+      - sessionBearer: []
+      responses:
+        '200':
+          description: Current user ID, display name and role
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/CurrentUser"}
+        '401': {description: Session is missing or invalid}
+  "/users/me/listings":
+    get:
+      summary: List the current seller's listings
+      operationId: getSellerListings
+      security:
+      - sessionBearer: []
+      parameters:
+      - {name: status, in: query, schema: {type: string, enum: [DRAFT, PUBLISHED, ARCHIVED]}}
+      - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+      - {name: size, in: query, schema: {type: integer, minimum: 1, default: 10}, description: Capped at 50}
+      responses:
+        '200':
+          description: Paginated owner-scoped listings
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/SellerListingPage"}
+        '400': {description: Invalid status or pagination}
+        '401': {description: Session is missing or invalid}
+  "/users/me/listings/{listingId}":
+    get:
+      summary: Read an owned listing, including a private draft
+      operationId: getSellerListing
+      security:
+      - sessionBearer: []
+      parameters:
+      - {name: listingId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Owner-scoped listing
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/Listing"}
+        '401': {description: Session is missing or invalid}
+        '404': {description: Listing is missing or belongs to another seller}
+  "/users/me/listings/{listingId}/interests":
+    get:
+      summary: Read buyer interest for an owned listing
+      operationId: getSellerInterests
+      security:
+      - sessionBearer: []
+      parameters:
+      - {name: listingId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Buyer display names and interest timestamps
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {"$ref": "#/components/schemas/SellerInterest"}
+        '401': {description: Session is missing or invalid}
+        '404': {description: Listing is missing or belongs to another seller}
   "/hello":
     get:
       summary: Return a greeting
@@ -40,6 +159,7 @@ paths:
           description: Identity or session service unavailable
     delete:
       summary: Revoke the current session
+      description: A 503 means revocation could not be confirmed; the client may retry.
       operationId: deleteSession
       security:
       - sessionBearer: []
@@ -408,9 +528,19 @@ paths:
           description: Authentication dependency unavailable
     post:
       summary: Create listing
-      description: Scoped to the authenticated seller. Creation makes a draft; updates
-        require expectedVersion.
+      description: Creates a draft for the authenticated seller. Repeating the same key and
+        payload returns the original response; a different payload with that key returns 409.
+        Keys are retained indefinitely.
       operationId: createListing
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: '^[A-Za-z0-9._~-]+$'
       security:
       - sessionBearer: []
       requestBody:
@@ -426,6 +556,11 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Listing"
+        '400':
+          description: Invalid request or missing idempotency key
+          content:
+            application/problem+json:
+              schema: {"$ref": "#/components/schemas/Problem"}
         '409':
           description: Conflict
         '401':
@@ -484,6 +619,11 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Listing"
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema: {"$ref": "#/components/schemas/Problem"}
         '404':
           description: Not found
         '409':
@@ -563,8 +703,7 @@ paths:
           description: Authentication dependency unavailable
     post:
       summary: Create interest
-      description: Scoped to the buyer. A published listing owned by another user
-        is required.
+      description: Scoped to the buyer. A publicly visible listing owned by another active user is required.
       operationId: createInterest
       security:
       - sessionBearer: []
@@ -587,6 +726,8 @@ paths:
           description: Session missing or invalid
         '403':
           description: Operation forbidden
+        '404':
+          description: Listing is not publicly available
         '503':
           description: Authentication dependency unavailable
   "/interests/{id}":
@@ -599,8 +740,7 @@ paths:
         format: uuid
     get:
       summary: Read interest
-      description: Scoped to the buyer. A published listing owned by another user
-        is required.
+      description: Scoped to the buyer; historical interest remains readable after archival.
       operationId: getInterest
       security:
       - sessionBearer: []
@@ -621,8 +761,8 @@ paths:
           description: Authentication dependency unavailable
     put:
       summary: Update interest
-      description: Scoped to the buyer. A published listing owned by another user
-        is required.
+      description: Scoped to the buyer. The original listing cannot be changed; it must
+        remain published and owned by another user.
       operationId: updateInterest
       security:
       - sessionBearer: []
@@ -651,8 +791,7 @@ paths:
           description: Authentication dependency unavailable
     delete:
       summary: Soft-delete interest
-      description: Scoped to the buyer. A published listing owned by another user
-        is required.
+      description: Scoped to the buyer. The listing and buyer pair remains reserved after deletion.
       operationId: deleteInterest
       security:
       - sessionBearer: []
@@ -825,8 +964,7 @@ paths:
   "/generations":
     get:
       summary: List generations
-      description: Scoped to the actor. Only an administrator may change the status;
-        AI generation is not yet connected.
+      description: Lists the current actor's generation attempts.
       operationId: listGeneration
       security:
       - sessionBearer: []
@@ -873,8 +1011,7 @@ paths:
           description: Authentication dependency unavailable
     post:
       summary: Create generation
-      description: Scoped to the actor. Only an administrator may change the status;
-        AI generation is not yet connected.
+      description: Scoped to the actor. DETERMINISTIC returns stored demo suggestions without a model call. LOCAL creates a pending attempt that can be executed through the gateway. Matching retries return the existing attempt even after publication or archive; the listing must remain owned and not deleted.
       operationId: createGeneration
       security:
       - sessionBearer: []
@@ -891,6 +1028,11 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Generation"
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema: {"$ref": "#/components/schemas/Problem"}
         '409':
           description: Conflict
         '401':
@@ -909,8 +1051,8 @@ paths:
         format: uuid
     get:
       summary: Read generation
-      description: Scoped to the actor. Only an administrator may change the status;
-        AI generation is not yet connected.
+      description: Scoped to the actor. Polling an attempt still processing after 60 seconds
+        marks its result UNKNOWN; it is not automatically retried.
       operationId: getGeneration
       security:
       - sessionBearer: []
@@ -931,8 +1073,8 @@ paths:
           description: Authentication dependency unavailable
     put:
       summary: Update generation
-      description: Scoped to the actor. Only an administrator may change the status;
-        AI generation is not yet connected.
+      description: Scoped to the actor. Only an administrator may mark a pending attempt
+        FAILED or UNKNOWN.
       operationId: updateGeneration
       security:
       - sessionBearer: []
@@ -961,8 +1103,7 @@ paths:
           description: Authentication dependency unavailable
     delete:
       summary: Soft-delete generation
-      description: Scoped to the actor. Only an administrator may change the status;
-        AI generation is not yet connected.
+      description: Scoped to the actor. An attempt in progress cannot be deleted.
       operationId: deleteGeneration
       security:
       - sessionBearer: []
@@ -977,6 +1118,36 @@ paths:
           description: Operation forbidden
         '503':
           description: Authentication dependency unavailable
+  "/generations/{id}/execute":
+    post:
+      summary: Execute a pending local generation attempt
+      operationId: executeLocalGeneration
+      description: Claims a pending attempt before calling the gateway. Repeating this request returns the current attempt without another model call. Stale processing becomes UNKNOWN after 60 seconds; uncertain outcomes are not retried automatically.
+      security:
+      - sessionBearer: []
+      parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Completed generation
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/Generation"}
+        '202':
+          description: Attempt is already processing
+          content:
+            application/json:
+              schema: {"$ref": "#/components/schemas/Generation"}
+        '400': {description: Draft input is invalid}
+        '401': {description: Session is missing or invalid}
+        '404': {description: Attempt or draft is unavailable to the caller}
+        '409': {description: Attempt is not local or the draft version changed}
+        '503':
+          description: Gateway failed; the outcome is unknown and must not be retried with this attempt.
+          content:
+            application/problem+json:
+              schema: {"$ref": "#/components/schemas/Problem"}
+              example: {type: 'about:blank', title: Service Unavailable, status: 503, detail: 'Generation is unavailable; the attempt outcome is unknown', code: GENERATION_OUTCOME_UNKNOWN}
   "/photos/{id}/content":
     parameters:
     - name: id
@@ -987,6 +1158,7 @@ paths:
         format: uuid
     put:
       summary: Upload and validate photo content
+      description: Uploads a draft photo or replaces a validated photo on a draft or published listing. Rejected replacements leave the previous image available.
       operationId: uploadPhotoContent
       security:
       - sessionBearer: []
@@ -1005,10 +1177,15 @@ paths:
                 "$ref": "#/components/schemas/Photo"
         '400':
           description: Invalid image
+        '413':
+          description: Request exceeds the configured ingress body limit
+          content:
+            application/problem+json:
+              schema: {"$ref": "#/components/schemas/Problem"}
         '404':
           description: Not found
         '409':
-          description: Listing is not editable
+          description: Listing or photo state does not allow upload
         '401':
           description: Session missing or invalid
         '403':
@@ -1050,7 +1227,18 @@ paths:
         format: uuid
     post:
       summary: Publish a complete draft with a validated photo
+      description: Repeating the same key, listing and expected version returns the original response.
+        A different request with that key returns 409. Keys are retained indefinitely.
       operationId: publicationsListing
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: '^[A-Za-z0-9._~-]+$'
       security:
       - sessionBearer: []
       requestBody:
@@ -1066,6 +1254,11 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Listing"
+        '400':
+          description: Invalid request or missing idempotency key
+          content:
+            application/problem+json:
+              schema: {"$ref": "#/components/schemas/Problem"}
         '404':
           description: Not found
         '409':
@@ -1102,6 +1295,11 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Listing"
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema: {"$ref": "#/components/schemas/Problem"}
         '404':
           description: Not found
         '409':
@@ -1119,8 +1317,73 @@ components:
       scheme: bearer
       description: Opaque session returned by POST /sessions
   schemas:
+    Problem:
+      type: object
+      required: [type, title, status, detail]
+      properties:
+        type: {type: string, example: 'about:blank'}
+        title: {type: string, example: Bad Request}
+        status: {type: integer, example: 400}
+        detail: {type: string, example: Request validation failed}
+        code: {type: string, description: Stable application code when available}
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: {type: string, example: displayName}
+              message: {type: string, example: must not be blank}
+    PublicListing:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        title: {type: string}
+        description: {type: string}
+        category: {type: string, enum: [OTHER, ELECTRONICS, HOME, FASHION, SPORTS, BOOKS]}
+        condition: {type: string}
+        city: {type: string}
+        price: {type: number}
+        currency: {type: string}
+        sellerDisplayName: {type: string}
+        createdAt: {type: string, format: date-time}
+    PublicListingPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items: {"$ref": "#/components/schemas/PublicListing"}
+        page: {type: integer}
+        size: {type: integer}
+        total: {type: integer, format: int64}
+    SellerListing:
+      allOf:
+      - {"$ref": "#/components/schemas/Listing"}
+      - type: object
+        properties:
+          interestCount: {type: integer, format: int64, minimum: 0, description: Count of visible buyer interests}
+    SellerListingPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items: {"$ref": "#/components/schemas/SellerListing"}
+        page: {type: integer}
+        size: {type: integer}
+        total: {type: integer, format: int64}
+    CurrentUser:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        displayName: {type: string}
+        role: {type: string, enum: [USER, ADMIN]}
+    SellerInterest:
+      type: object
+      properties:
+        buyerDisplayName: {type: string}
+        createdAt: {type: string, format: date-time}
     Login:
       type: object
+      example: {username: luke.skywalker, password: force-1977}
       required:
       - username
       - password
@@ -1169,20 +1432,28 @@ components:
           - ADMIN
     ListingInput:
       type: object
+      example: {title: Wooden chair, description: Oak chair with a small scratch, category: HOME, condition: USED, city: Montreal, price: 25.00, currency: CAD}
       properties:
         title:
           type: string
+          maxLength: 160
         description:
           type: string
+          maxLength: 10000
         category:
           type: string
+          nullable: true
+          enum: [OTHER, ELECTRONICS, HOME, FASHION, SPORTS, BOOKS, null]
         condition:
           type: string
+          maxLength: 80
         city:
           type: string
+          maxLength: 120
         price:
           type: number
           minimum: 0
+          maximum: 9999999999.99
           multipleOf: 0.01
         currency:
           type: string
@@ -1216,7 +1487,7 @@ components:
         byteSize:
           type: integer
           minimum: 1
-          maximum: 10485760
+          description: Maximum configured by photoMaxBytes in the backend YAML; default 20971520 bytes.
     PhotoContent:
       type: object
       required:
@@ -1225,9 +1496,10 @@ components:
         base64:
           type: string
           format: byte
-          maxLength: 13981016
+          description: Base64 encoding of an image up to photoMaxBytes; default 20971520 decoded bytes.
     Transition:
       type: object
+      example: {expectedVersion: 0}
       required:
       - expectedVersion
       properties:
@@ -1237,6 +1509,7 @@ components:
           minimum: 0
     GenerationCreate:
       type: object
+      example: {listingId: 01900000-0000-7000-8000-000000000001, requestKey: example-1, inputVersion: 0, clientRevision: revision-1, mode: DETERMINISTIC}
       required:
       - listingId
       - requestKey
@@ -1249,13 +1522,21 @@ components:
           format: uuid
         requestKey:
           type: string
+          minLength: 1
+          maxLength: 128
+          description: Opaque, case-sensitive identity; trailing spaces are significant. Whitespace-only keys are invalid.
         inputVersion:
           type: integer
           format: int64
+          minimum: 0
         clientRevision:
           type: string
+          minLength: 1
+          maxLength: 128
         mode:
           type: string
+          enum: [DETERMINISTIC, LOCAL]
+          description: DETERMINISTIC produces a demo result; LOCAL creates a pending attempt for gateway execution.
     GenerationUpdate:
       type: object
       required:
@@ -1264,8 +1545,6 @@ components:
         status:
           type: string
           enum:
-          - PENDING
-          - PROCESSING
           - FAILED
           - UNKNOWN
     Person:
@@ -1324,6 +1603,8 @@ components:
           type: string
         category:
           type: string
+          nullable: true
+          enum: [OTHER, ELECTRONICS, HOME, FASHION, SPORTS, BOOKS, null]
         condition:
           type: string
         city:
@@ -1406,3 +1687,18 @@ components:
           type: string
         status:
           type: string
+        provider:
+          type: string
+          nullable: true
+          description: deterministic identifies demo output without a model call.
+        model:
+          type: string
+          nullable: true
+        suggestions:
+          type: object
+          nullable: true
+          description: Suggestions require seller review; deterministic results copy available draft fields without a model call.
+          properties:
+            title: {type: string, maxLength: 120}
+            description: {type: string, maxLength: 3000}
+            category: {type: string, enum: [OTHER, ELECTRONICS, HOME, FASHION, SPORTS, BOOKS]}

@@ -5,7 +5,6 @@ import dev.hustletech.loopmarket.shared.application.GenericCrudService;
 import dev.hustletech.loopmarket.shared.domain.GenericRepository;
 import dev.hustletech.loopmarket.shared.domain.Outcome;
 import jakarta.persistence.LockModeType;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -29,17 +28,19 @@ import java.util.Optional;
 // Owns photo metadata and safe file handling; a listing stays unpublished until image bytes are validated.
 public final class PhotoService extends GenericCrudService<PhotoEntity, PhotoService.Input, PhotoService.Input> {
     public record Input(@NotNull UUID listingId, @NotNull @Pattern(regexp = "image/(jpeg|png)") String mediaType,
-                        @Min(1) @Max(10485760) long byteSize) {}
-    public record Content(@NotNull @jakarta.validation.constraints.Size(max = 13981016) String base64) {}
+                        @Min(1) long byteSize) {}
+    public record Content(@NotNull String base64) {}
     public record Image(byte[] bytes, String mediaType) {}
     private final UUID owner;
     private final SessionFactory sessions;
     private final Path storage;
     private final Clock clock;
-    public PhotoService(GenericRepository<PhotoEntity> repository, Clock clock, UUID owner, SessionFactory sessions, Path storage) {
-        super(repository, clock); this.owner = owner; this.sessions = sessions; this.storage = storage; this.clock = clock;
+    private final long maxBytes;
+    public PhotoService(GenericRepository<PhotoEntity> repository, Clock clock, UUID owner, SessionFactory sessions, Path storage, long maxBytes) {
+        super(repository, clock); this.owner = owner; this.sessions = sessions; this.storage = storage; this.clock = clock; this.maxBytes = maxBytes;
     }
     @Override protected PhotoEntity createEntity(Input input) {
+        validateSize(input.byteSize());
         editableListing(input.listingId());
         Long existing = sessions.getCurrentSession().createQuery(
                 "select count(p) from PhotoEntity p where p.listingId = :listing and p.deletedAt is null", Long.class)
@@ -48,6 +49,7 @@ public final class PhotoService extends GenericCrudService<PhotoEntity, PhotoSer
         return new PhotoEntity(input.listingId(), input.mediaType(), input.byteSize());
     }
     @Override protected void updateEntity(PhotoEntity entity, Input input) {
+        validateSize(input.byteSize());
         if (!entity.listingId().equals(input.listingId())) throw new ClientErrorException("Photo listing cannot be changed", 409);
         editableListing(entity.listingId());
         if (!"PENDING".equals(entity.validationStatus())) throw new ClientErrorException("Validated photos require replacement", 409);
@@ -59,13 +61,20 @@ public final class PhotoService extends GenericCrudService<PhotoEntity, PhotoSer
     }
     public Outcome<PhotoEntity> upload(UUID id, Content content) {
         return repository.findActive(id).<Outcome<PhotoEntity>>map(photo -> {
-            editableListing(photo.listingId());
+            ListingEntity listing = ownedListing(photo.listingId());
+            sessions.getCurrentSession().refresh(photo, LockModeType.PESSIMISTIC_WRITE);
+            if (photo.isDeleted()) return new Outcome.NotFound<>();
+            if (!"DRAFT".equals(listing.getStatus()) && !("PUBLISHED".equals(listing.getStatus()) && "VALID".equals(photo.validationStatus()))) {
+                throw new ClientErrorException("Photo cannot be replaced in this listing state", 409);
+            }
+            // Check encoded length before decoding; even the Empire has finite memory.
+            if (content.base64().length() > ((maxBytes + 2) / 3) * 4) throw new ClientErrorException("Image exceeds the size limit", 400);
             byte[] bytes;
             try { bytes = Base64.getDecoder().decode(content.base64()); }
             catch (IllegalArgumentException exception) { throw new ClientErrorException("Invalid image encoding", 400); }
-            if (bytes.length == 0 || bytes.length > 10485760) throw new ClientErrorException("Invalid image size", 400);
+            validateSize(bytes.length);
             String actualType = validateImage(bytes);
-            if (!actualType.equals(photo.mediaType())) throw new ClientErrorException("Image type does not match metadata", 400);
+            if ("PENDING".equals(photo.validationStatus()) && !actualType.equals(photo.mediaType())) throw new ClientErrorException("Image type does not match metadata", 400);
             // Generate the path server-side; client filenames never get a vote in filesystem navigation.
             String key = UUID.randomUUID().toString();
             try {
@@ -86,12 +95,16 @@ public final class PhotoService extends GenericCrudService<PhotoEntity, PhotoSer
             try {
                 if (!UUID.fromString(key).toString().equals(key)) throw new IllegalStateException("Invalid stored image key");
                 Path file = storage.resolve(key);
-                if (Files.size(file) > 10485760) throw new IllegalStateException("Stored image exceeds the size limit");
+                if (Files.size(file) > 67108864) throw new IllegalStateException("Stored image exceeds the size limit");
                 return new Image(Files.readAllBytes(file), photo.mediaType());
             } catch (IOException | IllegalArgumentException exception) {
                 throw new IllegalStateException("Could not read stored image", exception);
             }
         });
+    }
+
+    private void validateSize(long size) {
+        if (size < 1 || size > maxBytes) throw new ClientErrorException("Invalid image size", 400);
     }
 
     private static String validateImage(byte[] bytes) {
@@ -111,9 +124,15 @@ public final class PhotoService extends GenericCrudService<PhotoEntity, PhotoSer
             } finally { reader.dispose(); }
         } catch (IOException exception) { throw new ClientErrorException("Invalid image", 400); }
     }
-    private void editableListing(UUID id) {
+    private ListingEntity ownedListing(UUID id) {
         ListingEntity listing = sessions.getCurrentSession().find(ListingEntity.class, id, LockModeType.PESSIMISTIC_WRITE);
-        if (listing == null || listing.isDeleted() || !owner.equals(listing.getSellerId())) throw new ClientErrorException("Listing not found", 404);
+        if (listing == null) throw new ClientErrorException("Listing not found", 404);
+        sessions.getCurrentSession().refresh(listing, LockModeType.PESSIMISTIC_WRITE);
+        if (listing.isDeleted() || !owner.equals(listing.getSellerId())) throw new ClientErrorException("Listing not found", 404);
+        return listing;
+    }
+    private void editableListing(UUID id) {
+        ListingEntity listing = ownedListing(id);
         if (!"DRAFT".equals(listing.getStatus())) throw new ClientErrorException("Only draft photos can be changed", 409);
     }
 }

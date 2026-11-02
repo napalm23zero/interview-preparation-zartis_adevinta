@@ -7,12 +7,14 @@ services:
     networks:
     - zartis
     init: true
+    entrypoint: ["/bin/sh", "/etc/nginx/photo-limit-entrypoint.sh"]
+    command: ["nginx", "-g", "daemon off;"]
     profiles:
     - apps
     ports:
     - ${DEV_BIND_ADDRESS:?}:${NGINX_HOST_PORT:?}:${NGINX_PORT:?}
     environment:
-      NGINX_ENVSUBST_FILTER: ^(NGINX_PORT|BACKEND_PORT|FRONTEND_PORT)$
+      NGINX_ENVSUBST_FILTER: ^(NGINX_PORT|BACKEND_PORT|FRONTEND_PORT|NGINX_MAX_BODY_BYTES)$
       TZ: UTC
       LANG: C.UTF-8
       NGINX_PORT: ${NGINX_PORT:?}
@@ -20,6 +22,8 @@ services:
       FRONTEND_PORT: ${FRONTEND_PORT:?}
     volumes:
     - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    - ./nginx/photo-limit-entrypoint.sh:/etc/nginx/photo-limit-entrypoint.sh:ro
+    - ../../../backend/config.yml:/etc/loopmarket/backend-config.yml:ro
 networks:
   zartis:
     name: zartis

@@ -34,6 +34,10 @@ class ListingPersistenceTest {
                 .fold(ListingEntity::version, () -> -1L));
         assertEquals(1, version);
         assertThrows(ClientErrorException.class, () -> database.inTransaction(() -> owner.update(id, input("Stale", 0L))));
+        assertThrows(ClientErrorException.class, () -> database.inTransaction(() -> owner.create(
+                new ListingService.Input("Item", null, "NOT_A_CATEGORY", null, null, null, null, null))));
+        assertThrows(ClientErrorException.class, () -> database.inTransaction(() -> owner.update(id,
+                new ListingService.Input("Item", null, "NOT_A_CATEGORY", null, null, null, null, 1L))));
     }
 
     private ListingService service(UUID owner) {

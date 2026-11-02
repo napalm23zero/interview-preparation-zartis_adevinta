@@ -8,134 +8,136 @@
   <img alt="Status: in development" src="https://img.shields.io/badge/status-in%20development-00c853?style=for-the-badge&amp;labelColor=101820">
   <img alt="Backend: Java and Dropwizard" src="https://img.shields.io/badge/backend-Java%20%2B%20Dropwizard-f89820?style=for-the-badge&amp;labelColor=101820">
   <img alt="Infrastructure: Docker Compose" src="https://img.shields.io/badge/infra-Docker%20Compose-2496ed?style=for-the-badge&amp;labelColor=101820">
-  <img alt="AI: local and external models planned" src="https://img.shields.io/badge/AI-local%20%2B%20external%20planned-9c6ade?style=for-the-badge&amp;labelColor=101820">
+  <img alt="AI: local models and external providers planned" src="https://img.shields.io/badge/AI-local%20models%20%2B%20external%20planned-9c6ade?style=for-the-badge&amp;labelColor=101820">
 </p>
 
-LoopMarket is a planned second-hand marketplace where sellers create listings with optional AI assistance and buyers can express interest. Sellers review and approve everything before publication.
+LoopMarket is a second-hand marketplace where sellers create listings, optionally request AI suggestions, and approve publication. Buyers can browse published listings and express interest; interest is a stored signal, not a messaging or payment system.
 
-**Status:** The Dropwizard CRUD and development authentication have been tested with local MySQL, Redis, and Keycloak. The marketplace UI, AI integration, and mobile app are not implemented yet.
+**Status:** The backend and development authentication are implemented and tested. The web and Flutter applications, external AI providers and production deployment are planned.
 
-## Quick start
+## Run locally
 
 Requires Docker and Docker Compose 2.20 or later. From the repository root:
 
 ```sh
-./.docker/server.sh dev list                 # List services
-./.docker/server.sh dev status               # Show state and memory usage
-./.docker/server.sh dev logs backend redis   # Follow logs from selected services
-./.docker/server.sh dev start mysql redis     # Start selected services
-./.docker/server.sh dev stop mysql redis      # Stop selected services
-./.docker/server.sh dev start all             # Start every service
-./.docker/server.sh dev stop all              # Stop every service
+./.docker/server.sh dev start backend       # Starts the API, MySQL, Redis and Keycloak
+./.docker/server.sh dev list                # Available services
+./.docker/server.sh dev status              # State and memory usage
+./.docker/server.sh dev logs backend redis  # Follow selected logs
+./.docker/server.sh dev stop backend        # Stop without deleting data
 ```
 
-The first argument selects the environment. `dev` is configured; `qat`, `uat`, and `prd` are reserved and fail without touching development resources until their own configurations are added. After the environment, service names and the action can appear in any order. Starting builds images and may download them; stopping preserves containers and volumes. The marketplace UI is not yet available.
+The first run creates `.env-dev` from `.env-dev.example` and may download images and build dependencies. `dev` is configured; `qat`, `uat` and `prd` are reserved. With default ports, open [Swagger UI](http://localhost:8080/api/docs/) or the [hello endpoint](http://localhost:8080/api/hello).
 
-Use `dev logs all` to follow every service. Log lines carry aligned service tags; press `Ctrl+C` to stop following them.
-
-To start the initial backend and explore its API:
-
-```sh
-./.docker/server.sh dev start backend
-```
-
-With the default ports, the hello endpoint is `http://localhost:8080/api/hello` and Swagger UI is `http://localhost:8080/api/docs/`. Starting the backend also starts MySQL, Redis and Keycloak; MySQL and Redis must pass their health checks. Database connection settings come from `.env-dev`. The backend builds with Maven inside its container on startup; a first build needs dependency downloads. The administrative connector is private to the container and includes a database health check.
-
-The development identity realm includes these demo accounts. They are public test credentials and must only be used in an isolated development environment.
+Development accounts are seeded for local use only:
 
 | Username | Password | Role |
 |---|---|---|
 | `darth.vader` | `dark-side-1977` | Admin |
 | `luke.skywalker` | `force-1977` | User |
 
-In development, Liquibase restores the local accounts at startup; the backend periodically recreates or enables the corresponding Keycloak users and resets their demo passwords. Keycloak's initial realm import alone only runs when the realm does not already exist.
+Use **POST /sessions** in Swagger to obtain an `accessToken`, then select **Authorize** and enter the token. The backend issues opaque, 30-minute sessions, checks Redis and the local account on each protected request, and revokes a session on logout. Keycloak verifies the development credentials. These credentials and the development login flow are not a production identity setup.
 
-Request a development session and use its `accessToken` as an opaque bearer token. Sessions expire after 30 minutes, are checked against Redis on each authenticated request, and become invalid when the local account changes or is deleted:
+`photoMaxBytes` in `backend/config.yml` controls the decoded image limit: **20 MiB by default**, configurable from 1 byte to 64 MiB. The development NGINX reads the same setting and accounts for base64 overhead. After a change, run `./.docker/server.sh dev start backend nginx`.
 
-```sh
-curl -X POST http://localhost:8080/api/sessions \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"darth.vader","password":"dark-side-1977"}'
+## API and design decisions
 
-curl http://localhost:8080/api/persons -H 'Authorization: Bearer <accessToken>'
-curl -X DELETE http://localhost:8080/api/sessions -H 'Authorization: Bearer <accessToken>'
-```
+- **Clear boundaries:** `/api/catalog` exposes published listings and photos; `/api/users/me/listings` and the CRUD endpoints are scoped to the authenticated owner. Seller views include interest counts and buyer display names without exposing contact information.
+- **Safe writes:** draft creation and publication use an `Idempotency-Key`; listing edits and state changes use an expected version. MySQL constraints and transactional locks protect duplicate interests and the archive/interest race.
+- **Review before publication:** deterministic suggestions are labelled as demo output. Local inference uses the configured gateway and never edits or publishes a listing. The seller reviews every suggestion; malformed output and uncertain provider outcomes leave manual editing available.
+- **Auditable data:** application tables use UUIDv7 IDs and UTC creation, update and soft-deletion timestamps. Liquibase manages schema changes; Redis stores temporary sessions rather than marketplace data.
+- **Predictable errors:** API errors use `application/problem+json`; validation responses can include field-level details. The frontend can use the attempt status and `GENERATION_OUTCOME_UNKNOWN` to handle an interrupted model call.
 
-The API defines CRUD endpoints for persons, users, listings, interests, photos, and generation attempts. Access is restricted by role or ownership. Photo upload accepts JPEG or PNG and stores image files in the `zartis_photo-data` volume; generation records do not yet call an AI provider. API contracts and example request schemas are available in Swagger UI.
+Swagger documents the request schemas and examples. See the [frontend integration guide](docs/frontend-api.md) for the complete API flow and [database model](docs/database-model.md) for fields and constraints.
 
-With the backend running and its development dependencies available, run the backend checks, including the opt-in HTTP integration test, inside its container. The integration test creates development records and soft-deletes them; it also exercises the demo accounts and sessions:
+## Generic CRUD strategy
 
-```sh
-docker compose --project-directory "$PWD" --env-file .env-dev -f .docker/docker-compose.yaml \
-  --profile apps --profile mobile exec backend sh -c \
-  'LOOPMARKET_E2E=true LOOPMARKET_E2E_URL=http://backend:$BACKEND_PORT/api mvn -B -ntp -pl app -am test'
-```
+The `backend/shared` module centralizes CRUD behavior shared by multiple resources while keeping entity-specific rules in their own services and resources:
 
-## Services
+| Layer | Responsibility |
+|---|---|
+| `GenericEntity` | UUIDv7 identity, UTC audit timestamps and soft deletion. |
+| `GenericRepository` and Hibernate adapter | Persistence operations, active-record filtering and caller-specific scopes. |
+| `GenericCrudService` | Common create, read, list, update and soft-delete workflows; concrete services map inputs and enforce domain rules. |
+| `GenericCrudResource` | HTTP endpoints, pagination, request validation and response mapping; concrete resources determine authorization and safe views. |
 
-Each service has its own Dockerfile and Compose definition. All containers share the `zartis` network.
-
-```text
-LoopMarket
-├── Backend
-│   └── Backend application     (Java and Dropwizard)
-├── Frontend
-│   └── Web application         (Next.js, React and TypeScript, proposed)
-├── Mobile
-│   └── Mobile application      (Flutter and Dart, planned)
-├── AI
-│   ├── AI gateway              (model routing and provider integrations, planned)
-│   └── Ollama                  (local model runtime)
-└── Infrastructure
-    ├── NGINX                   (application ingress)
-    ├── MySQL                   (marketplace data)
-    ├── Redis                   (user session cache)
-    ├── Qdrant                  (AI vector database)
-    ├── Keycloak                (identity provider)
-    ├── SonarQube               (code quality)
-    ├── PostgreSQL              (SonarQube database)
-    ├── Elasticsearch           (observability data)
-    ├── Kibana                  (observability interface)
-    └── Elastic Agent           (log and metrics collection)
-```
-
-## Configuration
-
-- `.env-dev` contains local ports and credentials; it is created from `.env-dev.example` and is ignored by Git.
-- The root Compose file delegates to `.docker/docker-compose.yaml` and the individual service definitions.
-- `make check` validates Compose and tests resource preparation with a simulated Docker daemon.
-- Development credentials and disabled Elasticsearch authentication are for local use only.
-- Image builds and service integrations have not yet been verified. Ollama does not include downloaded models.
-
-Code comments should be professional, short, and clear, with friendly, subtle Sith or Star Wars references.
-
-## Planned architecture
+This removes repeated endpoint and persistence plumbing while keeping rules visible: for example, listing publication checks ownership, version and validated photo; interest creation checks listing visibility and buyer identity. Those operations have explicit domain methods and database boundaries rather than being reduced to generic CRUD.
 
 ```mermaid
 flowchart LR
-    User[Seller / Buyer] --> Browser[Web browser]
-    Browser --> Nginx[NGINX]
-    Nginx --> Web[Web frontend]
-    Nginx --> API[Dropwizard backend]
-    Browser -. Sign in .-> Identity[Keycloak]
-    API -. Verify identity .-> Identity
-    Mobile[Flutter app] -. Future .-> API
+    Client --> Resource[Resource: authorization and response view]
+    Resource --> Service[Service: domain rules]
+    Service --> CRUD[Shared CRUD workflow]
+    CRUD --> Port[Repository port]
+    Port --> Adapter[Hibernate adapter]
+    Adapter --> MySQL[(MySQL)]
+```
 
-    API --> DB[(MySQL)]
-    API --> Cache[(Redis)]
-    API --> Photos[(Photo storage)]
+## Services and structure
+
+Each service has a Dockerfile and Compose definition, and containers share the `zartis` network. Backend Maven modules are shown separately to make their responsibilities clear.
+
+```text
+LoopMarket
+├── backend
+│   ├── app                    (Dropwizard API, marketplace workflows and migrations)
+│   ├── shared                 (generic CRUD, persistence port and common entity)
+│   ├── platform/identity      (identity and Redis session components)
+│   └── product/marketplace    (initial marketplace domain and greeting)
+├── frontend                   (Next.js, React and TypeScript; planned)
+├── mobile                     (Flutter and Dart; planned)
+├── ai
+│   ├── ai-gateway             (deterministic and Ollama routing)
+│   └── ollama                 (local model runtime)
+└── infrastructure
+    ├── nginx                  (application ingress)
+    ├── mysql / redis          (marketplace data / sessions)
+    ├── keycloak               (development identity)
+    ├── qdrant                 (vector database; retrieval not integrated)
+    ├── elasticsearch / kibana / elastic-agent  (observability)
+    └── sonarqube / postgresql (code quality and its database)
+```
+
+```mermaid
+flowchart LR
+    Browser[Browser: planned] --> NGINX[NGINX]
+    NGINX --> Web[Web app: planned]
+    NGINX --> API[Dropwizard API]
+    API --> Identity[Keycloak: dev login]
+    API --> Redis[(Redis sessions)]
+    API --> MySQL[(MySQL)]
+    API --> Photos[(Photo volume)]
     API --> Gateway[AI gateway]
     Gateway --> Ollama[Ollama]
-    Gateway --> Vector[(Qdrant)]
-    Gateway -.-> Providers[External AI providers]
-
-    API -. Logs .-> Agent[Elastic Agent]
-    Gateway -. Logs .-> Agent
-    Agent --> Elastic[(Elasticsearch)]
-    Kibana[Kibana] --> Elastic
-    Code[Source code] -. Analysis .-> Sonar[SonarQube]
-    Sonar --> SonarDB[(PostgreSQL)]
+    Gateway -. future .-> Providers[External providers]
+    Gateway -. future .-> Qdrant[(Qdrant)]
 ```
+
+## AI configuration
+
+Deterministic suggestions work without a model. For local inference, set `AI_GATEWAY_MODE=ollama` and `OLLAMA_MODEL=qwen2.5:0.5b` in `.env-dev`, then:
+
+```sh
+./.docker/server.sh dev start ollama ai-gateway
+docker compose --project-directory "$PWD" --env-file .env-dev -f .docker/docker-compose.yaml \
+  --profile apps --profile mobile exec ollama ollama pull qwen2.5:0.5b
+```
+
+The model download uses network bandwidth and disk space. Local inference has been exercised, but its quality evaluation remains pending; output may contain unsupported details. External provider adapters are future work. See [generation evaluation](docs/generation-evaluation.md).
+
+## Verification
+
+With the backend container running, run the Java suite and Compose/resource checks:
+
+```sh
+docker compose --project-directory "$PWD" --env-file .env-dev -f .docker/docker-compose.yaml \
+  --profile apps --profile mobile exec backend mvn -B -ntp test
+make check
+```
+
+The isolated two-user API journey has been exercised with MySQL, Redis and Keycloak, including publication, discovery, interest, concurrent requests, session revocation and failure recovery. Local Ollama inference and the 20 MiB photo boundary have also been exercised. Integration tests are opt-in and create records; their scope and results are described in [backend verification](docs/backend-api-plan.md).
+
+Old image files and files left by a failed database transaction are retained; automatic orphan cleanup is not implemented.
 
 ## Data model
 

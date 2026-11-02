@@ -1,6 +1,7 @@
 package dev.hustletech.loopmarket.app.interest;
 
 import dev.hustletech.loopmarket.app.listing.ListingEntity;
+import dev.hustletech.loopmarket.app.listing.ListingVisibility;
 import dev.hustletech.loopmarket.shared.application.GenericCrudService;
 import dev.hustletech.loopmarket.shared.domain.GenericRepository;
 import jakarta.persistence.LockModeType;
@@ -36,13 +37,16 @@ public final class InterestService extends GenericCrudService<InterestEntity, In
         return new InterestEntity(input.listingId(), buyer);
     }
     @Override protected void updateEntity(InterestEntity entity, Input input) {
+        // Interest records describe one buyer's original signal; they cannot defect to another listing.
+        if (!entity.listingId().equals(input.listingId())) throw new ClientErrorException("Interest listing cannot be changed", 409);
         requireAvailableListing(input.listingId());
-        entity.moveTo(input.listingId());
     }
     private void requireAvailableListing(UUID id) {
         // Lock the listing so archiving cannot race a buyer's interest, even at lightspeed.
         ListingEntity listing = sessions.getCurrentSession().find(ListingEntity.class, id, LockModeType.PESSIMISTIC_WRITE);
-        if (listing == null || listing.isDeleted() || !"PUBLISHED".equals(listing.getStatus())) {
+        if (listing == null) throw new ClientErrorException("Listing is unavailable", 404);
+        sessions.getCurrentSession().refresh(listing, LockModeType.PESSIMISTIC_WRITE);
+        if (listing.isDeleted() || !"PUBLISHED".equals(listing.getStatus()) || !ListingVisibility.isPublic(sessions.getCurrentSession(), id)) {
             throw new ClientErrorException("Listing is unavailable", 404);
         }
         if (listing.getSellerId().equals(buyer)) throw new ClientErrorException("Cannot express interest in your own listing", 403);

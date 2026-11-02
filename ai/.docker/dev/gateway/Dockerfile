@@ -1,1 +1,1 @@
-FROM alpine:3.22 AS dev
+FROM node:22-alpine AS dev

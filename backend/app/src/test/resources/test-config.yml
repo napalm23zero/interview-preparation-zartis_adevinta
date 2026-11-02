@@ -18,3 +18,5 @@ database:
   minSize: 1
   maxSize: 2
   validationQuery: SELECT 1
+  properties:
+    hibernate.hbm2ddl.auto: create

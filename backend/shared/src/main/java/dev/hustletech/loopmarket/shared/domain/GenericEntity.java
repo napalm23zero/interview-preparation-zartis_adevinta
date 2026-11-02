@@ -46,7 +46,7 @@ public abstract class GenericEntity {
     @PrePersist
     protected void onCreate() {
         if (id != null) throw new IllegalStateException("New entity must not have an id");
-        Instant now = clock.instant();
+        Instant now = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         long millis = now.toEpochMilli();
         if (millis < 0 || millis > 0xffffffffffffL) throw new IllegalStateException("Clock is outside UUIDv7 range");
         UUID random = UUID.randomUUID();
@@ -57,8 +57,8 @@ public abstract class GenericEntity {
 
     @PreUpdate
     protected void onUpdate() {
-        // The entity owns UTC audit time; clients do not get to rewrite history.
-        updatedAt = clock.instant();
+        // Match MySQL microseconds so a replay does not rewrite the timeline.
+        updatedAt = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
     }
 
     public UUID getId() { return id; }
@@ -73,13 +73,13 @@ public abstract class GenericEntity {
 
     public final void touch(Clock clock) {
         useClock(clock);
-        updatedAt = this.clock.instant();
+        updatedAt = this.clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
     }
 
     // Retain the row for references and audit while repositories hide it from active reads.
     public final void softDelete(Clock clock) {
         useClock(clock);
-        Instant now = this.clock.instant();
+        Instant now = this.clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         deletedAt = now;
         updatedAt = now;
     }

@@ -26,7 +26,7 @@ public abstract class GenericCrudResource<E extends GenericEntity, C, U, R> {
     }
 
     @POST @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON) @UnitOfWork
-    public Response create(@Context SecurityContext security, @Context UriInfo uri, @Valid @NotNull C input) {
+    public Response create(@Context SecurityContext security, @Context UriInfo uri, @Context HttpHeaders headers, @Valid @NotNull C input) {
         E entity = service(security, Action.CREATE, null).create(input);
         return Response.created(uri.getAbsolutePathBuilder().path(entity.getId().toString()).build())
                 .entity(toResponse(entity)).build();

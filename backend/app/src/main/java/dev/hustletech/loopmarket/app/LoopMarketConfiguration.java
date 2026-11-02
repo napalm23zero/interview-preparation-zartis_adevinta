@@ -17,6 +17,10 @@ public final class LoopMarketConfiguration extends Configuration {
     private String identityAdminUser = "";
     private String identityAdminPassword = "";
     private String photoStoragePath = "/data/photos";
+    @jakarta.validation.constraints.Min(1)
+    @jakarta.validation.constraints.Max(67108864)
+    private long photoMaxBytes = 20971520;
+    private String aiGatewayUrl = "http://ai-gateway:8100";
     @Valid
     @NotNull
     private DataSourceFactory database = new DataSourceFactory();
@@ -47,6 +51,10 @@ public final class LoopMarketConfiguration extends Configuration {
     @JsonProperty public void setIdentityAdminUser(String user) { this.identityAdminUser = user; }
     @JsonProperty public String getIdentityAdminPassword() { return identityAdminPassword; }
     @JsonProperty public void setIdentityAdminPassword(String password) { this.identityAdminPassword = password; }
+    @JsonProperty public long getPhotoMaxBytes() { return photoMaxBytes; }
+    @JsonProperty public void setPhotoMaxBytes(long value) { this.photoMaxBytes = value; }
     @JsonProperty public String getPhotoStoragePath() { return photoStoragePath; }
     @JsonProperty public void setPhotoStoragePath(String path) { this.photoStoragePath = path; }
+    @JsonProperty public String getAiGatewayUrl() { return aiGatewayUrl; }
+    @JsonProperty public void setAiGatewayUrl(String url) { this.aiGatewayUrl = url; }
 }

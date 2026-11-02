@@ -29,11 +29,13 @@ public final class ListingService extends GenericCrudService<ListingEntity, List
         super(repository, clock); this.seller = seller; this.sessions = sessions; this.clock = clock;
     }
     @Override protected ListingEntity createEntity(Input input) {
+        requireCategory(input.category());
         ListingEntity listing = new ListingEntity(seller);
         listing.update(input);
         return listing;
     }
     @Override protected void updateEntity(ListingEntity listing, Input input) {
+        requireCategory(input.category());
         // Require the caller's observed version so stale edits cannot silently overwrite newer work.
         if (input.expectedVersion() == null || input.expectedVersion() != listing.version()) {
             throw new ClientErrorException("Listing version does not match", 409);
@@ -64,6 +66,7 @@ public final class ListingService extends GenericCrudService<ListingEntity, List
                         || blank(listing.city()) || listing.price() == null || blank(listing.currency())) {
                     throw new ClientErrorException("Listing details are incomplete", 409);
                 }
+                if (!ListingCategories.contains(listing.category())) throw new ClientErrorException("Listing category is unsupported", 409);
                 requirePhoto(id);
                 listing.status("PUBLISHED");
             } else {
@@ -77,6 +80,10 @@ public final class ListingService extends GenericCrudService<ListingEntity, List
     }
 
     private static boolean blank(String value) { return value == null || value.isBlank(); }
+
+    private static void requireCategory(String category) {
+        if (category != null && !ListingCategories.contains(category)) throw new ClientErrorException("Listing category is unsupported", 400);
+    }
 
     private void requirePhoto(UUID id) {
         // Require a validated image, not merely upload metadata, before publication.
