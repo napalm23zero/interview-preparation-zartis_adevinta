@@ -1,0 +1,28 @@
+services:
+  identity:
+    build:
+      context: ./identity
+      dockerfile: Dockerfile
+    networks:
+    - zartis
+    init: true
+    ports:
+    - ${DEV_BIND_ADDRESS:?}:${IDENTITY_HOST_PORT:?}:${IDENTITY_PORT:?}
+    command:
+    - start-dev
+    - --http-port=${IDENTITY_PORT:?}
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${IDENTITY_ADMIN_USER:?}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${IDENTITY_ADMIN_PASSWORD:?}
+      TZ: UTC
+      LANG: C.UTF-8
+    volumes:
+    - identity-data:/opt/keycloak/data
+networks:
+  zartis:
+    name: zartis
+    external: true
+volumes:
+  identity-data:
+    external: true
+    name: zartis_identity-data

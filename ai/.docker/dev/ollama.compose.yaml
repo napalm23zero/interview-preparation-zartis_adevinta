@@ -1,0 +1,24 @@
+services:
+  ollama:
+    build:
+      context: ./ollama
+      dockerfile: Dockerfile
+    networks:
+    - zartis
+    init: true
+    ports:
+    - ${DEV_BIND_ADDRESS:?}:${OLLAMA_HOST_PORT:?}:${OLLAMA_PORT:?}
+    volumes:
+    - ollama-models:/root/.ollama
+    environment:
+      OLLAMA_HOST: 0.0.0.0:${OLLAMA_PORT:?}
+      TZ: UTC
+      LANG: C.UTF-8
+networks:
+  zartis:
+    name: zartis
+    external: true
+volumes:
+  ollama-models:
+    external: true
+    name: zartis_ollama-models

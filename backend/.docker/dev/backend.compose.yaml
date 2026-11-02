@@ -1,0 +1,38 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    networks:
+    - zartis
+    init: true
+    ports:
+    - ${DEV_BIND_ADDRESS:?}:${BACKEND_HOST_PORT:?}:${BACKEND_PORT:?}
+    - ${DEV_BIND_ADDRESS:?}:${BACKEND_ADMIN_HOST_PORT:?}:${BACKEND_ADMIN_PORT:?}
+    profiles:
+    - apps
+    working_dir: /workspace
+    volumes:
+    - ../..:/workspace
+    - maven-cache:/root/.m2
+    - application-logs:/var/log/zartis
+    command:
+    - sh
+    - -c
+    - echo "Development workspace only; application startup is not implemented.";
+      exec sleep infinity
+    environment:
+      TZ: UTC
+      LANG: C.UTF-8
+networks:
+  zartis:
+    name: zartis
+    external: true
+volumes:
+  maven-cache:
+    external: true
+    name: zartis_maven-cache
+  application-logs:
+    external: true
+    name: zartis_application-logs

@@ -1,0 +1,19 @@
+{
+  "name": "LoopMarket frontend",
+  "dockerComposeFile": "../../docker-compose.yaml",
+  "service": "frontend",
+  "runServices": [
+    "frontend"
+  ],
+  "workspaceFolder": "/workspace",
+  "overrideCommand": false,
+  "shutdownAction": "none",
+  "initializeCommand": "sh ../scripts/initialize.sh && sh ../scripts/resources.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  }
+}

@@ -1,0 +1,37 @@
+services:
+  elasticsearch:
+    build:
+      context: ./elasticsearch
+      dockerfile: Dockerfile
+    networks:
+    - zartis
+    init: true
+    ports:
+    - ${DEV_BIND_ADDRESS:?}:${ELASTICSEARCH_HOST_PORT:?}:${ELASTICSEARCH_PORT:?}
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: 'false'
+      http.port: ${ELASTICSEARCH_PORT:?}
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      TZ: UTC
+      LANG: C.UTF-8
+      ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:?}
+    volumes:
+    - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - curl -fsS "http://localhost:$$ELASTICSEARCH_PORT/_cluster/health?wait_for_status=yellow&timeout=5s"
+        >/dev/null
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+networks:
+  zartis:
+    name: zartis
+    external: true
+volumes:
+  elasticsearch-data:
+    external: true
+    name: zartis_elasticsearch-data

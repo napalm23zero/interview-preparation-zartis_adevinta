@@ -1,0 +1,26 @@
+services:
+  qdrant:
+    build:
+      context: ./qdrant
+      dockerfile: Dockerfile
+    networks:
+    - zartis
+    init: true
+    ports:
+    - ${DEV_BIND_ADDRESS:?}:${QDRANT_HTTP_HOST_PORT:?}:${QDRANT_HTTP_PORT:?}
+    - ${DEV_BIND_ADDRESS:?}:${QDRANT_GRPC_HOST_PORT:?}:${QDRANT_GRPC_PORT:?}
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: ${QDRANT_HTTP_PORT:?}
+      QDRANT__SERVICE__GRPC_PORT: ${QDRANT_GRPC_PORT:?}
+      TZ: UTC
+      LANG: C.UTF-8
+    volumes:
+    - qdrant-data:/qdrant/storage
+networks:
+  zartis:
+    name: zartis
+    external: true
+volumes:
+  qdrant-data:
+    external: true
+    name: zartis_qdrant-data

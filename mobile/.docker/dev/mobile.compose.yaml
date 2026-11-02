@@ -1,0 +1,35 @@
+services:
+  mobile:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    networks:
+    - zartis
+    init: true
+    ports:
+    - ${DEV_BIND_ADDRESS:?}:${MOBILE_WEB_HOST_PORT:?}:${MOBILE_WEB_PORT:?}
+    platform: linux/amd64
+    profiles:
+    - mobile
+    working_dir: /workspace
+    volumes:
+    - ../..:/workspace
+    - flutter-pub-cache:/root/.pub-cache
+    entrypoint:
+    - /bin/sh
+    - -c
+    command:
+    - echo "Flutter workspace only; no application exists yet. Native iOS builds require
+      macOS/Xcode."; exec sleep infinity
+    environment:
+      TZ: UTC
+      LANG: C.UTF-8
+networks:
+  zartis:
+    name: zartis
+    external: true
+volumes:
+  flutter-pub-cache:
+    external: true
+    name: zartis_flutter-pub-cache

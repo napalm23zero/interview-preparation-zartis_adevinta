@@ -1,0 +1,3 @@
+include:
+- path: mobile.compose.yaml
+  env_file: ../../../.env-dev

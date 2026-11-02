@@ -1,0 +1,34 @@
+services:
+  ai-gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+      target: dev
+    networks:
+    - zartis
+    init: true
+    ports:
+    - ${DEV_BIND_ADDRESS:?}:${AI_GATEWAY_HOST_PORT:?}:${AI_GATEWAY_PORT:?}
+    profiles:
+    - apps
+    working_dir: /workspace
+    volumes:
+    - ../..:/workspace
+    - application-logs:/var/log/zartis
+    command:
+    - sh
+    - -c
+    - echo "Gateway placeholder; implementation stack is undecided."; exec sleep infinity
+    environment:
+      OLLAMA_URL: http://ollama:${OLLAMA_PORT:?}
+      QDRANT_URL: http://qdrant:${QDRANT_HTTP_PORT:?}
+      TZ: UTC
+      LANG: C.UTF-8
+networks:
+  zartis:
+    name: zartis
+    external: true
+volumes:
+  application-logs:
+    external: true
+    name: zartis_application-logs

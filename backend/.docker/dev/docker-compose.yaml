@@ -1,0 +1,3 @@
+include:
+- path: backend.compose.yaml
+  env_file: ../../../.env-dev

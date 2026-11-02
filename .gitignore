@@ -1,0 +1,6 @@
+# Local environment overrides and secrets
+.env-dev
+.env
+.env.*
+!.env-dev.example
+!.env.example

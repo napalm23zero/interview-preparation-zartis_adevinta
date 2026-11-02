@@ -1,0 +1,39 @@
+services:
+  mysql:
+    build:
+      context: ./mysql
+      dockerfile: Dockerfile
+    networks:
+    - zartis
+    init: true
+    ports:
+    - ${DEV_BIND_ADDRESS:?}:${MYSQL_HOST_PORT:?}:${MYSQL_PORT:?}
+    command:
+    - --port=${MYSQL_PORT:?}
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?}
+      MYSQL_USER: ${MYSQL_USER:?}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?}
+      TZ: UTC
+      LANG: C.UTF-8
+      MYSQL_PORT: ${MYSQL_PORT:?}
+    volumes:
+    - mysql-data:/var/lib/mysql
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - mysqladmin ping -h 127.0.0.1 -P "$$MYSQL_PORT" -u root -p"$$MYSQL_ROOT_PASSWORD"
+        --silent
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+networks:
+  zartis:
+    name: zartis
+    external: true
+volumes:
+  mysql-data:
+    external: true
+    name: zartis_mysql-data

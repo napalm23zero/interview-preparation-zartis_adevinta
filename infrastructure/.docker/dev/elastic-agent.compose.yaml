@@ -1,0 +1,36 @@
+include:
+- elasticsearch.compose.yaml
+services:
+  elastic-agent:
+    build:
+      context: ./elastic-agent
+      dockerfile: Dockerfile
+    networks:
+    - zartis
+    init: true
+    command:
+    - -c
+    - /etc/elastic-agent/elastic-agent.yml
+    - -e
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:${ELASTICSEARCH_PORT:?}
+      TZ: UTC
+      LANG: C.UTF-8
+    volumes:
+    - ./elastic-agent/elastic-agent.yml:/etc/elastic-agent/elastic-agent.yml:ro
+    - application-logs:/var/log/zartis:ro
+    - elastic-agent-state:/usr/share/elastic-agent/state
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+networks:
+  zartis:
+    name: zartis
+    external: true
+volumes:
+  application-logs:
+    external: true
+    name: zartis_application-logs
+  elastic-agent-state:
+    external: true
+    name: zartis_elastic-agent-state

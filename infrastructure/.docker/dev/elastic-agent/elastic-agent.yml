@@ -1,0 +1,20 @@
+outputs:
+  default:
+    type: elasticsearch
+    hosts: ["${env.ELASTICSEARCH_URL}"]
+inputs:
+  - id: application-logs
+    type: filestream
+    streams:
+      - id: application-log-files
+        data_stream.dataset: zartis.application
+        paths: ["/var/log/zartis/*.log"]
+  - id: container-system-metrics
+    type: system/metrics
+    streams:
+      - metricsets: [cpu]
+        data_stream.dataset: system.cpu
+        period: 10s
+      - metricsets: [memory]
+        data_stream.dataset: system.memory
+        period: 10s

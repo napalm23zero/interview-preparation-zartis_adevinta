@@ -1,0 +1,38 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    networks:
+    - zartis
+    init: true
+    ports:
+    - ${DEV_BIND_ADDRESS:?}:${FRONTEND_HOST_PORT:?}:${FRONTEND_PORT:?}
+    profiles:
+    - apps
+    working_dir: /workspace
+    volumes:
+    - ../..:/workspace
+    - frontend-node-modules:/workspace/node_modules
+    - application-logs:/var/log/zartis
+    command:
+    - sh
+    - -c
+    - echo "Development workspace only; application startup is not implemented.";
+      exec sleep infinity
+    environment:
+      PORT: ${FRONTEND_PORT:?}
+      TZ: UTC
+      LANG: C.UTF-8
+networks:
+  zartis:
+    name: zartis
+    external: true
+volumes:
+  frontend-node-modules:
+    external: true
+    name: zartis_frontend-node-modules
+  application-logs:
+    external: true
+    name: zartis_application-logs

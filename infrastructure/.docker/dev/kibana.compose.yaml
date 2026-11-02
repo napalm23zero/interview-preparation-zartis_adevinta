@@ -1,0 +1,26 @@
+include:
+- elasticsearch.compose.yaml
+services:
+  kibana:
+    build:
+      context: ./kibana
+      dockerfile: Dockerfile
+    networks:
+    - zartis
+    init: true
+    ports:
+    - ${DEV_BIND_ADDRESS:?}:${KIBANA_HOST_PORT:?}:${KIBANA_PORT:?}
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:${ELASTICSEARCH_PORT:?}
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: ${KIBANA_PORT:?}
+      TELEMETRY_ENABLED: 'false'
+      TZ: UTC
+      LANG: C.UTF-8
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+networks:
+  zartis:
+    name: zartis
+    external: true

@@ -1,0 +1,21 @@
+include:
+- path: nginx.compose.yaml
+  env_file: ../../../.env-dev
+- path: mysql.compose.yaml
+  env_file: ../../../.env-dev
+- path: redis.compose.yaml
+  env_file: ../../../.env-dev
+- path: qdrant.compose.yaml
+  env_file: ../../../.env-dev
+- path: sonar-postgres.compose.yaml
+  env_file: ../../../.env-dev
+- path: sonarqube.compose.yaml
+  env_file: ../../../.env-dev
+- path: identity.compose.yaml
+  env_file: ../../../.env-dev
+- path: elasticsearch.compose.yaml
+  env_file: ../../../.env-dev
+- path: kibana.compose.yaml
+  env_file: ../../../.env-dev
+- path: elastic-agent.compose.yaml
+  env_file: ../../../.env-dev

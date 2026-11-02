@@ -1,0 +1,38 @@
+services:
+  sonar-postgres:
+    build:
+      context: ./sonar-postgres
+      dockerfile: Dockerfile
+    networks:
+    - zartis
+    init: true
+    ports:
+    - ${DEV_BIND_ADDRESS:?}:${SONAR_POSTGRES_HOST_PORT:?}:${SONAR_POSTGRES_PORT:?}
+    command:
+    - postgres
+    - -p
+    - ${SONAR_POSTGRES_PORT:?}
+    environment:
+      POSTGRES_DB: ${SONAR_DB:?}
+      POSTGRES_USER: ${SONAR_DB_USER:?}
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD:?}
+      TZ: UTC
+      LANG: C.UTF-8
+      SONAR_POSTGRES_PORT: ${SONAR_POSTGRES_PORT:?}
+    volumes:
+    - sonar-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -p "$$SONAR_POSTGRES_PORT"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+networks:
+  zartis:
+    name: zartis
+    external: true
+volumes:
+  sonar-postgres-data:
+    external: true
+    name: zartis_sonar-postgres-data

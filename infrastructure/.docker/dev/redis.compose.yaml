@@ -1,0 +1,37 @@
+services:
+  redis:
+    build:
+      context: ./redis
+      dockerfile: Dockerfile
+    networks:
+    - zartis
+    init: true
+    ports:
+    - ${DEV_BIND_ADDRESS:?}:${REDIS_HOST_PORT:?}:${REDIS_PORT:?}
+    command:
+    - redis-server
+    - --port
+    - ${REDIS_PORT:?}
+    - --appendonly
+    - 'yes'
+    volumes:
+    - redis-data:/data
+    environment:
+      TZ: UTC
+      LANG: C.UTF-8
+      REDIS_PORT: ${REDIS_PORT:?}
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - redis-cli -p "$$REDIS_PORT" ping | grep -q PONG
+      interval: 10s
+      timeout: 5s
+      retries: 12
+networks:
+  zartis:
+    name: zartis
+    external: true
+volumes:
+  redis-data:
+    external: true
+    name: zartis_redis-data

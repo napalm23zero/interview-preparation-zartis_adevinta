@@ -1,0 +1,25 @@
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    networks:
+    - zartis
+    init: true
+    profiles:
+    - apps
+    ports:
+    - ${DEV_BIND_ADDRESS:?}:${NGINX_HOST_PORT:?}:${NGINX_PORT:?}
+    environment:
+      NGINX_ENVSUBST_FILTER: ^(NGINX_PORT|BACKEND_PORT|FRONTEND_PORT)$
+      TZ: UTC
+      LANG: C.UTF-8
+      NGINX_PORT: ${NGINX_PORT:?}
+      BACKEND_PORT: ${BACKEND_PORT:?}
+      FRONTEND_PORT: ${FRONTEND_PORT:?}
+    volumes:
+    - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+networks:
+  zartis:
+    name: zartis
+    external: true

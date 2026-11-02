@@ -1,0 +1,5 @@
+include:
+- path: ai-gateway.compose.yaml
+  env_file: ../../../.env-dev
+- path: ollama.compose.yaml
+  env_file: ../../../.env-dev
