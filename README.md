@@ -123,7 +123,7 @@ docker compose --project-directory "$PWD" --env-file .env-dev -f .docker/docker-
   --profile apps --profile mobile exec ollama ollama pull qwen2.5:0.5b
 ```
 
-The model download uses network bandwidth and disk space. Local inference has been exercised, but its quality evaluation remains pending; output may contain unsupported details. External provider adapters are future work. See [generation evaluation](docs/generation-evaluation.md).
+The model download uses network bandwidth and disk space. Local inference was evaluated on 21 cases; output may omit or invent details, and human review remains pending. External provider adapters are future work. See [generation evaluation](docs/generation-evaluation.md).
 
 ## Verification
 
