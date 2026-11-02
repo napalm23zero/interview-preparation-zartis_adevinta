@@ -7,6 +7,8 @@
                  /_/        > EVERY ITEM HAS A NEXT CHAPTER <
 ```
 
+<h1 align="center">LoopMarket</h1>
+
 <p align="center">
   <strong>A marketplace for second chances, built with an agentic mindset.</strong>
 </p>
@@ -23,6 +25,19 @@ LoopMarket is a planned second-hand marketplace that helps people create useful 
 This independent portfolio project explores the product and engineering responsibilities of an Agentic Product Engineer: taking a marketplace idea from requirements through full-stack delivery, working with coding agents, and reviewing their output. It is not a client assignment or an Adevinta product.
 
 **Current status:** The repository contains development container configuration and application workspaces. The marketplace, AI gateway, mobile application and integrations are not implemented yet. The diagram below describes the intended architecture, not a running product.
+
+## Quick start
+
+From the repository root, with Docker and Docker Compose installed:
+
+```sh
+./.docker/server.sh list               # List available services
+./.docker/server.sh status             # Show container state and memory usage
+./.docker/server.sh start mysql redis  # Build and start selected services
+./.docker/server.sh stop mysql redis   # Stop them without removing data
+```
+
+Replace the service names with `all` to start or stop every defined service. Starting services builds their images and may download base images. The application workspaces are currently placeholders, so starting the stack does not yet launch a working marketplace.
 
 ## The product
 
@@ -72,7 +87,7 @@ LoopMarket
     └── Elastic Agent                (collects logs and metrics)
 ```
 
-Each service has its own `*.compose.yaml` file; the area Compose files include those definitions, and the root Compose file joins these services to the external `zartis` network. Named volumes are also external and retain their original `zartis_` names. The `apps` profile includes NGINX and the backend, frontend and AI gateway workspaces; the `mobile` profile includes the Flutter workspace. Other configured services are included without those profiles. Each infrastructure service directory contains a Dockerfile; some also contain its configuration.
+Each service has its own `*.compose.yaml` file; the area Compose files include those definitions, and `.docker/docker-compose.yaml` brings them together on the external `zartis` network. The root Compose file delegates to it. Named volumes are also external and retain their original `zartis_` names. The `apps` profile includes NGINX and the backend, frontend and AI gateway workspaces; the `mobile` profile includes the Flutter workspace. Other configured services are included without those profiles. Each infrastructure service directory contains a Dockerfile; some also contain its configuration.
 
 ## Development configuration
 
@@ -82,7 +97,20 @@ Docker Compose 2.20 or later is required for the root file's `include` feature. 
 docker compose --env-file .env-dev --profile apps --profile mobile config --quiet
 ```
 
-Once the required images are available, use `make up-build` to prepare the external network and volumes if absent, then build and start infrastructure services and Ollama. `make app-up` starts NGINX and the application workspaces; `make app-stop` stops those workspaces without stopping infrastructure. The application workspaces currently idle, so NGINX cannot yet serve a working marketplace. Ollama also starts without downloaded models.
+Use `make up-build` to prepare the external network and volumes if absent, then build and start infrastructure services and Ollama. `make app-up` starts NGINX and the application workspaces; `make app-stop` stops those workspaces without stopping infrastructure. The application workspaces currently idle, so NGINX cannot yet serve a working marketplace. Ollama also starts without downloaded models.
+
+Use the central service launcher from any working directory:
+
+```sh
+./.docker/server.sh list
+./.docker/server.sh status
+./.docker/server.sh start backend mysql redis
+./.docker/server.sh stop backend mysql redis
+./.docker/server.sh start all
+./.docker/server.sh stop all
+```
+
+Use the script's absolute path when outside the repository. The action may also appear after the service names. `start` prepares shared resources and builds the selected images; Compose also starts declared dependencies. `stop` stops containers without removing them or their volumes. `status` shows all defined services, their container state, and current memory usage and limit for running containers; services that have never been created are labeled accordingly. `list` works without a running Docker daemon.
 
 The NGINX development configuration routes `/api/` to the backend and other paths to the frontend. Authentication routing and HTTPS remain to be designed. Keycloak users and realms are not seeded. The Elastic pipeline is only a starting point: Elastic Agent reads files from a shared application-log volume and initially collects metrics from its own container. It sends data directly to Elasticsearch without Fleet or Logstash. Image builds, startup and end-to-end behavior have not been verified.
 

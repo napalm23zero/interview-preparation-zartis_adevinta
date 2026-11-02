@@ -1,0 +1,12 @@
+name: zartis
+include:
+- path: backend/.docker/dev/docker-compose.yaml
+  env_file: .env-dev
+- path: frontend/.docker/dev/docker-compose.yaml
+  env_file: .env-dev
+- path: mobile/.docker/dev/docker-compose.yaml
+  env_file: .env-dev
+- path: ai/.docker/dev/docker-compose.yaml
+  env_file: .env-dev
+- path: infrastructure/.docker/dev/docker-compose.yaml
+  env_file: .env-dev

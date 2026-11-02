@@ -1,6 +1,47 @@
-# Local environment overrides and secrets
-.env-dev
+# Local environment and secrets
 .env
 .env.*
+.env-*
+!.env*.example
 !.env-dev.example
 !.env.example
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+*.swp
+*.swo
+
+# Java and Maven
+**/target/
+.gradle/
+**/build/
+
+# Node and Next.js
+node_modules/
+.next/
+.turbo/
+coverage/
+
+# Flutter and Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+
+# Test results, logs and local container data
+test-results/
+playwright-report/
+*.log
+.data/
