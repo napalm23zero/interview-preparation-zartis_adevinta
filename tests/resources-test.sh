@@ -2,7 +2,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-# Keep the real Compose parser while simulating Docker resource state.
+# Simulate the fleet; keep the real Compose parser in command.
 docker() {
   case "${1-}:${2-}" in
     info:) [ "${MOCK_UNAVAILABLE:-0}" = 0 ]; return ;;

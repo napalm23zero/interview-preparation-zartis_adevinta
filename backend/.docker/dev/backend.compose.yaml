@@ -1,3 +1,5 @@
+include:
+- ../../../infrastructure/.docker/dev/mysql.compose.yaml
 services:
   backend:
     build:
@@ -9,7 +11,6 @@ services:
     init: true
     ports:
     - ${DEV_BIND_ADDRESS:?}:${BACKEND_HOST_PORT:?}:${BACKEND_PORT:?}
-    - ${DEV_BIND_ADDRESS:?}:${BACKEND_ADMIN_HOST_PORT:?}:${BACKEND_ADMIN_PORT:?}
     profiles:
     - apps
     working_dir: /workspace
@@ -20,11 +21,24 @@ services:
     command:
     - sh
     - -c
-    - echo "Development workspace only; application startup is not implemented.";
-      exec sleep infinity
+    - >-
+      mvn -B -ntp package -DskipTests &&
+      exec java "-Ddw.server.applicationConnectors[0].port=$$BACKEND_PORT"
+      "-Ddw.server.adminConnectors[0].port=$$BACKEND_ADMIN_PORT"
+      -jar app/target/loopmarket.jar server config.yml
     environment:
       TZ: UTC
       LANG: C.UTF-8
+      BACKEND_PORT: ${BACKEND_PORT:?}
+      BACKEND_ADMIN_PORT: ${BACKEND_ADMIN_PORT:?}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: ${MYSQL_PORT:?}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?}
+      MYSQL_USER: ${MYSQL_USER:?}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?}
+    depends_on:
+      mysql:
+        condition: service_healthy
 networks:
   zartis:
     name: zartis

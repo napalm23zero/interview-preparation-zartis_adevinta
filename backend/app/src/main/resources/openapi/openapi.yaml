@@ -1,0 +1,24 @@
+openapi: 3.0.3
+info:
+  title: LoopMarket API
+  version: 0.1.0
+  description: Initial API for the LoopMarket marketplace.
+servers:
+  - url: /api
+paths:
+  /hello:
+    get:
+      summary: Return a greeting
+      operationId: sayHello
+      responses:
+        '200':
+          description: Greeting returned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message:
+                    type: string
+                    example: Hello, World!

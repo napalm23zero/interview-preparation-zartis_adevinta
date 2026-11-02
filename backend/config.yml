@@ -1,0 +1,19 @@
+server:
+  rootPath: /api/*
+  applicationConnectors:
+    - type: http
+      port: 8080
+  adminConnectors:
+    - type: http
+      port: 8081
+      bindHost: 127.0.0.1
+
+database:
+  driverClass: com.mysql.cj.jdbc.Driver
+  url: "jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}?connectTimeout=5000&socketTimeout=5000"
+  user: "${MYSQL_USER}"
+  password: "${MYSQL_PASSWORD}"
+  initialSize: 1
+  minSize: 1
+  maxSize: 5
+  validationQuery: SELECT 1
