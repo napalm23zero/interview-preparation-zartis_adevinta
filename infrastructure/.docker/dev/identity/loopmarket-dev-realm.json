@@ -1,0 +1,36 @@
+{
+  "realm": "loopmarket-dev",
+  "enabled": true,
+  "registrationAllowed": false,
+  "clients": [
+    {
+      "clientId": "loopmarket-dev",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "id": "01900000-0000-7000-8000-000000000201",
+      "username": "darth.vader",
+      "email": "darth.vader@example.invalid",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Darth",
+      "lastName": "Vader",
+      "credentials": [{"type": "password", "value": "dark-side-1977", "temporary": false}]
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000000202",
+      "username": "luke.skywalker",
+      "email": "luke.skywalker@example.invalid",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Luke",
+      "lastName": "Skywalker",
+      "credentials": [{"type": "password", "value": "force-1977", "temporary": false}]
+    }
+  ]
+}

@@ -10,14 +10,17 @@ services:
     - ${DEV_BIND_ADDRESS:?}:${IDENTITY_HOST_PORT:?}:${IDENTITY_PORT:?}
     command:
     - start-dev
+    - --import-realm
     - --http-port=${IDENTITY_PORT:?}
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${IDENTITY_ADMIN_USER:?}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${IDENTITY_ADMIN_PASSWORD:?}
+      KC_HOSTNAME: http://identity:${IDENTITY_PORT:?}
       TZ: UTC
       LANG: C.UTF-8
     volumes:
     - identity-data:/opt/keycloak/data
+    - ./identity/loopmarket-dev-realm.json:/opt/keycloak/data/import/loopmarket-dev-realm.json:ro
 networks:
   zartis:
     name: zartis

@@ -25,7 +25,9 @@ public abstract class GenericCrudService<E extends GenericEntity, C, U> {
     public E create(C input) {
         E entity = createEntity(input);
         entity.useClock(clock);
-        return repository.create(entity);
+        E persisted = repository.create(entity);
+        repository.flush();
+        return persisted;
     }
     public Outcome<E> find(UUID id) {
         return repository.findActive(id).<Outcome<E>>map(Outcome.Success::new).orElseGet(Outcome.NotFound::new);
@@ -36,6 +38,7 @@ public abstract class GenericCrudService<E extends GenericEntity, C, U> {
         return repository.findActive(id).<Outcome<E>>map(entity -> {
             updateEntity(entity, input);
             entity.touch(clock);
+            repository.flush();
             return new Outcome.Success<>(entity);
         }).orElseGet(Outcome.NotFound::new);
     }

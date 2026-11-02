@@ -1,3 +1,12 @@
+migrationsEnabled: true
+migrationContexts: dev
+identityIssuer: "http://identity:${IDENTITY_PORT}/realms/loopmarket-dev"
+sessionsEnabled: true
+redisUrl: "redis://${REDIS_HOST}:${REDIS_PORT}"
+demoUsersEnabled: true
+identityAdminUser: "${IDENTITY_ADMIN_USER}"
+identityAdminPassword: "${IDENTITY_ADMIN_PASSWORD}"
+
 server:
   rootPath: /api/*
   applicationConnectors:
@@ -17,3 +26,6 @@ database:
   minSize: 1
   maxSize: 5
   validationQuery: SELECT 1
+  properties:
+    hibernate.jdbc.time_zone: UTC
+    hibernate.hbm2ddl.auto: none

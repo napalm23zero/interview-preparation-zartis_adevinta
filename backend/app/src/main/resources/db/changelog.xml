@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd">
+    <changeSet id="001-marketplace-schema" author="loopmarket" dbms="mysql">
+        <sqlFile path="db/001-marketplace-schema.sql" splitStatements="true"/>
+    </changeSet>
+    <changeSet id="002-demo-identities" author="loopmarket" context="@dev" dbms="mysql" runAlways="true">
+        <sqlFile path="db/002-demo-identities.sql" splitStatements="true"/>
+    </changeSet>
+</databaseChangeLog>

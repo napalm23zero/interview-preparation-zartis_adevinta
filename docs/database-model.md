@@ -1,6 +1,6 @@
 # Database model
 
-This is the proposed logical model for the LoopMarket MVP. It describes the product data before migrations or persistence code are implemented.
+This is the LoopMarket MVP data model. The initial MySQL schema and development identity seed are implemented with Liquibase in `backend/app/src/main/resources/db`.
 
 ## Common fields
 
@@ -13,9 +13,9 @@ Every table has these fields:
 | `updated_at` | Last update instant. |
 | `deleted_at` | Deletion instant, nullable until the row is soft-deleted. |
 
-All timestamps represent instants in UTC, returned by the API with an explicit UTC offset. MySQL does not preserve the original time zone in `DATETIME` or `TIMESTAMP`; the MVP does not store it separately. The exact physical type and precision remain to be validated when implementing the migration. Application and database connection time zones must be configured consistently and tested.
+All timestamps represent instants in UTC, returned by the API with an explicit UTC offset. MySQL does not preserve the original time zone in `DATETIME` or `TIMESTAMP`; the MVP does not store it separately. The migration uses `DATETIME(6)` and the backend configures Hibernate to use UTC.
 
-For UUID storage, `BINARY(16)` in standard UUID byte order is a proposed physical representation. The version-1 byte-swapping option must not be applied to UUIDv7. Exact column types and generation library will be selected and tested with the migration.
+UUIDs are stored as `BINARY(16)` in standard byte order. The version-1 byte-swapping option must not be applied to UUIDv7.
 
 ## Tables
 
@@ -38,6 +38,8 @@ A local account mapped to a verified external identity and one person. A user ma
 | `person_id` | Profile, referencing `persons.id`; unique and required. |
 | `issuer` | Identity provider issuer. |
 | `external_subject` | Subject returned by the provider; not assumed to be a UUID. |
+| `account_role` | Application authorization role. |
+| `auth_version` | Version used to invalidate sessions after account changes. |
 
 The pair `(issuer, external_subject)` uniquely identifies the external identity. One person can have at most one user account in this MVP. Passwords and provider credentials are not stored here. Creating an account and its person must be transactional; soft-deletion and any later account reactivation need an explicit policy.
 
@@ -102,8 +104,8 @@ A request key must identify one request payload; reuse with different input is a
 
 - The identity provider authenticates the person and issues tokens. The backend verifies the token before mapping `(issuer, subject)` to a local user.
 - MySQL is the source of truth for local users, persons and marketplace records. Redis holds temporary user-session state with an expiration; it is not a relational table or the authoritative identity record.
-- Session data must not contain plaintext passwords or expose access tokens in logs. Session expiry and logout must be enforced consistently; the exact TTL and invalidation behavior remain open.
-- Whether Redis is required to validate each request or used only as a cache remains an architecture decision. A cache entry alone must not turn an unverified token into an authenticated user.
+- Development sessions use a 30-minute TTL and store only a hash of the opaque bearer token as their Redis key. Logout revokes the session.
+- Each authenticated request checks Redis and confirms the MySQL account and profile are active and the account version still matches. Login creates a session only after the identity provider verifies the credentials.
 - `users` owns the login identity; `persons` owns the marketplace profile. Both use UUIDv7 and UTC audit timestamps.
 
 ```mermaid

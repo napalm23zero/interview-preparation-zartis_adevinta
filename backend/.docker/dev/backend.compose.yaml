@@ -1,5 +1,7 @@
 include:
 - ../../../infrastructure/.docker/dev/mysql.compose.yaml
+- ../../../infrastructure/.docker/dev/redis.compose.yaml
+- ../../../infrastructure/.docker/dev/identity.compose.yaml
 services:
   backend:
     build:
@@ -18,6 +20,7 @@ services:
     - ../..:/workspace
     - maven-cache:/root/.m2
     - application-logs:/var/log/zartis
+    - photo-data:/data/photos
     command:
     - sh
     - -c
@@ -36,9 +39,18 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:?}
       MYSQL_USER: ${MYSQL_USER:?}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?}
+      IDENTITY_PORT: ${IDENTITY_PORT:?}
+      IDENTITY_ADMIN_USER: ${IDENTITY_ADMIN_USER:?}
+      IDENTITY_ADMIN_PASSWORD: ${IDENTITY_ADMIN_PASSWORD:?}
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT:?}
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      identity:
+        condition: service_started
 networks:
   zartis:
     name: zartis
@@ -50,3 +62,6 @@ volumes:
   application-logs:
     external: true
     name: zartis_application-logs
+  photo-data:
+    external: true
+    name: zartis_photo-data

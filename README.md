@@ -13,7 +13,7 @@
 
 LoopMarket is a planned second-hand marketplace where sellers create listings with optional AI assistance and buyers can express interest. Sellers review and approve everything before publication.
 
-**Status:** The first Dropwizard hello endpoint and API documentation are implemented but awaiting runtime verification. The marketplace, AI gateway, mobile app, and integrations are not implemented yet.
+**Status:** The Dropwizard CRUD and development authentication have been tested with local MySQL, Redis, and Keycloak. The marketplace UI, AI integration, and mobile app are not implemented yet.
 
 ## Quick start
 
@@ -29,7 +29,7 @@ Requires Docker and Docker Compose 2.20 or later. From the repository root:
 ./.docker/server.sh dev stop all              # Stop every service
 ```
 
-The first argument selects the environment. `dev` is configured; `qat`, `uat`, and `prd` are reserved and fail without touching development resources until their own configurations are added. After the environment, service names and the action can appear in any order. Starting builds images and may download them; stopping preserves containers and volumes. The marketplace is not yet available.
+The first argument selects the environment. `dev` is configured; `qat`, `uat`, and `prd` are reserved and fail without touching development resources until their own configurations are added. After the environment, service names and the action can appear in any order. Starting builds images and may download them; stopping preserves containers and volumes. The marketplace UI is not yet available.
 
 Use `dev logs all` to follow every service. Log lines carry aligned service tags; press `Ctrl+C` to stop following them.
 
@@ -39,7 +39,37 @@ To start the initial backend and explore its API:
 ./.docker/server.sh dev start backend
 ```
 
-With the default ports, the hello endpoint is `http://localhost:8080/api/hello` and Swagger UI is `http://localhost:8080/api/docs/`. Starting the backend also starts MySQL and waits for its health check. Database connection settings come from `.env-dev`; the backend uses MySQL's internal service name and application credentials. The backend builds with Maven inside its container on startup; a first build needs dependency downloads. The administrative connector is private to the container and includes a database health check. The MySQL connection and health check have not yet been verified in a running container.
+With the default ports, the hello endpoint is `http://localhost:8080/api/hello` and Swagger UI is `http://localhost:8080/api/docs/`. Starting the backend also starts MySQL, Redis and Keycloak; MySQL and Redis must pass their health checks. Database connection settings come from `.env-dev`. The backend builds with Maven inside its container on startup; a first build needs dependency downloads. The administrative connector is private to the container and includes a database health check.
+
+The development identity realm includes these demo accounts. They are public test credentials and must only be used in an isolated development environment.
+
+| Username | Password | Role |
+|---|---|---|
+| `darth.vader` | `dark-side-1977` | Admin |
+| `luke.skywalker` | `force-1977` | User |
+
+In development, Liquibase restores the local accounts at startup; the backend periodically recreates or enables the corresponding Keycloak users and resets their demo passwords. Keycloak's initial realm import alone only runs when the realm does not already exist.
+
+Request a development session and use its `accessToken` as an opaque bearer token. Sessions expire after 30 minutes, are checked against Redis on each authenticated request, and become invalid when the local account changes or is deleted:
+
+```sh
+curl -X POST http://localhost:8080/api/sessions \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"darth.vader","password":"dark-side-1977"}'
+
+curl http://localhost:8080/api/persons -H 'Authorization: Bearer <accessToken>'
+curl -X DELETE http://localhost:8080/api/sessions -H 'Authorization: Bearer <accessToken>'
+```
+
+The API defines CRUD endpoints for persons, users, listings, interests, photos, and generation attempts. Access is restricted by role or ownership. Photo upload accepts JPEG or PNG and stores image files in the `zartis_photo-data` volume; generation records do not yet call an AI provider. API contracts and example request schemas are available in Swagger UI.
+
+With the backend running and its development dependencies available, run the backend checks, including the opt-in HTTP integration test, inside its container. The integration test creates development records and soft-deletes them; it also exercises the demo accounts and sessions:
+
+```sh
+docker compose --project-directory "$PWD" --env-file .env-dev -f .docker/docker-compose.yaml \
+  --profile apps --profile mobile exec backend sh -c \
+  'LOOPMARKET_E2E=true LOOPMARKET_E2E_URL=http://backend:$BACKEND_PORT/api mvn -B -ntp -pl app -am test'
+```
 
 ## Services
 

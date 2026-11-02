@@ -59,11 +59,11 @@ public abstract class GenericEntity {
         updatedAt = clock.instant();
     }
 
-    public final UUID getId() { return id; }
-    public final Instant getCreatedAt() { return createdAt; }
-    public final Instant getUpdatedAt() { return updatedAt; }
-    public final Instant getDeletedAt() { return deletedAt; }
-    public final boolean isDeleted() { return deletedAt != null; }
+    public UUID getId() { return id; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public Instant getDeletedAt() { return deletedAt; }
+    public boolean isDeleted() { return deletedAt != null; }
 
     public final void useClock(Clock clock) {
         this.clock = Objects.requireNonNull(clock);

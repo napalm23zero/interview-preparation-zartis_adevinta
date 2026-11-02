@@ -1,24 +1,1408 @@
+---
 openapi: 3.0.3
 info:
   title: LoopMarket API
   version: 0.1.0
-  description: Initial API for the LoopMarket marketplace.
+  description: Development API. Marketplace workflows and integrations are still in
+    progress.
 servers:
-  - url: /api
+- url: "/api"
 paths:
-  /hello:
+  "/hello":
     get:
       summary: Return a greeting
       operationId: sayHello
       responses:
         '200':
-          description: Greeting returned successfully
+          description: Greeting returned
+  "/sessions":
+    post:
+      summary: Authenticate with the development identity provider
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Login"
+      responses:
+        '200':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Session"
+        '401':
+          description: Invalid credentials
+        '403':
+          description: No local account
+        '503':
+          description: Identity or session service unavailable
+    delete:
+      summary: Revoke the current session
+      operationId: deleteSession
+      security:
+      - sessionBearer: []
+      responses:
+        '204':
+          description: Session revoked
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/persons":
+    get:
+      summary: List persons
+      description: Administrator only.
+      operationId: listPerson
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+      responses:
+        '200':
+          description: Page returned
           content:
             application/json:
               schema:
                 type: object
-                required: [message]
                 properties:
-                  message:
-                    type: string
-                    example: Hello, World!
+                  content:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Person"
+                  page:
+                    type: integer
+                  size:
+                    type: integer
+                  total:
+                    type: integer
+                    format: int64
+        '400':
+          description: Invalid page
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    post:
+      summary: Create person
+      description: Administrator only.
+      operationId: createPerson
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/PersonInput"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Person"
+        '409':
+          description: Conflict
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/persons/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Read person
+      description: Administrator only.
+      operationId: getPerson
+      security:
+      - sessionBearer: []
+      responses:
+        '200':
+          description: Found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Person"
+        '404':
+          description: Not found
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    put:
+      summary: Update person
+      description: Administrator only.
+      operationId: updatePerson
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/PersonInput"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Person"
+        '404':
+          description: Not found
+        '409':
+          description: Conflict
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    delete:
+      summary: Soft-delete person
+      description: Administrator only.
+      operationId: deletePerson
+      security:
+      - sessionBearer: []
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/users":
+    get:
+      summary: List users
+      description: Administrator only. Identity credentials remain with the identity
+        provider.
+      operationId: listAccount
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+      responses:
+        '200':
+          description: Page returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Account"
+                  page:
+                    type: integer
+                  size:
+                    type: integer
+                  total:
+                    type: integer
+                    format: int64
+        '400':
+          description: Invalid page
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    post:
+      summary: Create account
+      description: Administrator only. Identity credentials remain with the identity
+        provider.
+      operationId: createAccount
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AccountInput"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Account"
+        '409':
+          description: Conflict
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/users/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Read account
+      description: Administrator only. Identity credentials remain with the identity
+        provider.
+      operationId: getAccount
+      security:
+      - sessionBearer: []
+      responses:
+        '200':
+          description: Found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Account"
+        '404':
+          description: Not found
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    put:
+      summary: Update account
+      description: Administrator only. Identity credentials remain with the identity
+        provider.
+      operationId: updateAccount
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AccountInput"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Account"
+        '404':
+          description: Not found
+        '409':
+          description: Conflict
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    delete:
+      summary: Soft-delete account
+      description: Administrator only. Identity credentials remain with the identity
+        provider.
+      operationId: deleteAccount
+      security:
+      - sessionBearer: []
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/listings":
+    get:
+      summary: List listings
+      description: Scoped to the authenticated seller. Creation makes a draft; updates
+        require expectedVersion.
+      operationId: listListing
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+      responses:
+        '200':
+          description: Page returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Listing"
+                  page:
+                    type: integer
+                  size:
+                    type: integer
+                  total:
+                    type: integer
+                    format: int64
+        '400':
+          description: Invalid page
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    post:
+      summary: Create listing
+      description: Scoped to the authenticated seller. Creation makes a draft; updates
+        require expectedVersion.
+      operationId: createListing
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/ListingInput"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Listing"
+        '409':
+          description: Conflict
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/listings/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Read listing
+      description: Scoped to the authenticated seller. Creation makes a draft; updates
+        require expectedVersion.
+      operationId: getListing
+      security:
+      - sessionBearer: []
+      responses:
+        '200':
+          description: Found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Listing"
+        '404':
+          description: Not found
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    put:
+      summary: Update listing
+      description: Scoped to the authenticated seller. Creation makes a draft; updates
+        require expectedVersion.
+      operationId: updateListing
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/ListingInput"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Listing"
+        '404':
+          description: Not found
+        '409':
+          description: Conflict
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    delete:
+      summary: Soft-delete listing
+      description: Scoped to the authenticated seller. Creation makes a draft; updates
+        require expectedVersion.
+      operationId: deleteListing
+      security:
+      - sessionBearer: []
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/interests":
+    get:
+      summary: List interests
+      description: Scoped to the buyer. A published listing owned by another user
+        is required.
+      operationId: listInterest
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+      responses:
+        '200':
+          description: Page returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Interest"
+                  page:
+                    type: integer
+                  size:
+                    type: integer
+                  total:
+                    type: integer
+                    format: int64
+        '400':
+          description: Invalid page
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    post:
+      summary: Create interest
+      description: Scoped to the buyer. A published listing owned by another user
+        is required.
+      operationId: createInterest
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/InterestInput"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Interest"
+        '409':
+          description: Conflict
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/interests/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Read interest
+      description: Scoped to the buyer. A published listing owned by another user
+        is required.
+      operationId: getInterest
+      security:
+      - sessionBearer: []
+      responses:
+        '200':
+          description: Found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Interest"
+        '404':
+          description: Not found
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    put:
+      summary: Update interest
+      description: Scoped to the buyer. A published listing owned by another user
+        is required.
+      operationId: updateInterest
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/InterestInput"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Interest"
+        '404':
+          description: Not found
+        '409':
+          description: Conflict
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    delete:
+      summary: Soft-delete interest
+      description: Scoped to the buyer. A published listing owned by another user
+        is required.
+      operationId: deleteInterest
+      security:
+      - sessionBearer: []
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/photos":
+    get:
+      summary: List photos
+      description: Scoped to the listing owner. Metadata remains pending until image
+        content is uploaded and validated.
+      operationId: listPhoto
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+      responses:
+        '200':
+          description: Page returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Photo"
+                  page:
+                    type: integer
+                  size:
+                    type: integer
+                  total:
+                    type: integer
+                    format: int64
+        '400':
+          description: Invalid page
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    post:
+      summary: Create photo
+      description: Scoped to the listing owner. Metadata remains pending until image
+        content is uploaded and validated.
+      operationId: createPhoto
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/PhotoInput"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Photo"
+        '409':
+          description: Conflict
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/photos/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Read photo
+      description: Scoped to the listing owner. Metadata remains pending until image
+        content is uploaded and validated.
+      operationId: getPhoto
+      security:
+      - sessionBearer: []
+      responses:
+        '200':
+          description: Found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Photo"
+        '404':
+          description: Not found
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    put:
+      summary: Update photo
+      description: Scoped to the listing owner. Metadata remains pending until image
+        content is uploaded and validated.
+      operationId: updatePhoto
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/PhotoInput"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Photo"
+        '404':
+          description: Not found
+        '409':
+          description: Conflict
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    delete:
+      summary: Soft-delete photo
+      description: Scoped to the listing owner. Metadata remains pending until image
+        content is uploaded and validated.
+      operationId: deletePhoto
+      security:
+      - sessionBearer: []
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/generations":
+    get:
+      summary: List generations
+      description: Scoped to the actor. Only an administrator may change the status;
+        AI generation is not yet connected.
+      operationId: listGeneration
+      security:
+      - sessionBearer: []
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+      responses:
+        '200':
+          description: Page returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Generation"
+                  page:
+                    type: integer
+                  size:
+                    type: integer
+                  total:
+                    type: integer
+                    format: int64
+        '400':
+          description: Invalid page
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    post:
+      summary: Create generation
+      description: Scoped to the actor. Only an administrator may change the status;
+        AI generation is not yet connected.
+      operationId: createGeneration
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/GenerationCreate"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Generation"
+        '409':
+          description: Conflict
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/generations/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Read generation
+      description: Scoped to the actor. Only an administrator may change the status;
+        AI generation is not yet connected.
+      operationId: getGeneration
+      security:
+      - sessionBearer: []
+      responses:
+        '200':
+          description: Found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Generation"
+        '404':
+          description: Not found
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    put:
+      summary: Update generation
+      description: Scoped to the actor. Only an administrator may change the status;
+        AI generation is not yet connected.
+      operationId: updateGeneration
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/GenerationUpdate"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Generation"
+        '404':
+          description: Not found
+        '409':
+          description: Conflict
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    delete:
+      summary: Soft-delete generation
+      description: Scoped to the actor. Only an administrator may change the status;
+        AI generation is not yet connected.
+      operationId: deleteGeneration
+      security:
+      - sessionBearer: []
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/photos/{id}/content":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    put:
+      summary: Upload and validate photo content
+      operationId: uploadPhotoContent
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/PhotoContent"
+      responses:
+        '200':
+          description: Photo validated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Photo"
+        '400':
+          description: Invalid image
+        '404':
+          description: Not found
+        '409':
+          description: Listing is not editable
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+    get:
+      summary: Read an owned validated photo
+      operationId: readPhotoContent
+      security:
+      - sessionBearer: []
+      responses:
+        '200':
+          description: Validated image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Not found
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/listings/{id}/publications":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    post:
+      summary: Publish a complete draft with a validated photo
+      operationId: publicationsListing
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Transition"
+      responses:
+        '200':
+          description: Listing updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Listing"
+        '404':
+          description: Not found
+        '409':
+          description: Invalid state or version
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+  "/listings/{id}/archives":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    post:
+      summary: Archive a published listing
+      operationId: archivesListing
+      security:
+      - sessionBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Transition"
+      responses:
+        '200':
+          description: Listing updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Listing"
+        '404':
+          description: Not found
+        '409':
+          description: Invalid state or version
+        '401':
+          description: Session missing or invalid
+        '403':
+          description: Operation forbidden
+        '503':
+          description: Authentication dependency unavailable
+components:
+  securitySchemes:
+    sessionBearer:
+      type: http
+      scheme: bearer
+      description: Opaque session returned by POST /sessions
+  schemas:
+    Login:
+      type: object
+      required:
+      - username
+      - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    Session:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        expiresIn:
+          type: integer
+          format: int64
+    PersonInput:
+      type: object
+      required:
+      - displayName
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+    AccountInput:
+      type: object
+      required:
+      - personId
+      - issuer
+      - externalSubject
+      - role
+      properties:
+        personId:
+          type: string
+          format: uuid
+        issuer:
+          type: string
+        externalSubject:
+          type: string
+        role:
+          type: string
+          enum:
+          - USER
+          - ADMIN
+    ListingInput:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        condition:
+          type: string
+        city:
+          type: string
+        price:
+          type: number
+          minimum: 0
+          multipleOf: 0.01
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        expectedVersion:
+          type: integer
+          format: int64
+    InterestInput:
+      type: object
+      required:
+      - listingId
+      properties:
+        listingId:
+          type: string
+          format: uuid
+    PhotoInput:
+      type: object
+      required:
+      - listingId
+      - mediaType
+      - byteSize
+      properties:
+        listingId:
+          type: string
+          format: uuid
+        mediaType:
+          type: string
+          enum:
+          - image/jpeg
+          - image/png
+        byteSize:
+          type: integer
+          minimum: 1
+          maximum: 10485760
+    PhotoContent:
+      type: object
+      required:
+      - base64
+      properties:
+        base64:
+          type: string
+          format: byte
+          maxLength: 13981016
+    Transition:
+      type: object
+      required:
+      - expectedVersion
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+    GenerationCreate:
+      type: object
+      required:
+      - listingId
+      - requestKey
+      - inputVersion
+      - clientRevision
+      - mode
+      properties:
+        listingId:
+          type: string
+          format: uuid
+        requestKey:
+          type: string
+        inputVersion:
+          type: integer
+          format: int64
+        clientRevision:
+          type: string
+        mode:
+          type: string
+    GenerationUpdate:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - PENDING
+          - PROCESSING
+          - FAILED
+          - UNKNOWN
+    Person:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        displayName:
+          type: string
+    Account:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        personId:
+          type: string
+          format: uuid
+        issuer:
+          type: string
+        externalSubject:
+          type: string
+        role:
+          type: string
+    Listing:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        sellerId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        condition:
+          type: string
+        city:
+          type: string
+        price:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+        version:
+          type: integer
+          format: int64
+    Interest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        listingId:
+          type: string
+          format: uuid
+        buyerId:
+          type: string
+          format: uuid
+    Photo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        listingId:
+          type: string
+          format: uuid
+        mediaType:
+          type: string
+        byteSize:
+          type: integer
+          format: int64
+        validationStatus:
+          type: string
+    Generation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        listingId:
+          type: string
+          format: uuid
+        actorId:
+          type: string
+          format: uuid
+        requestKey:
+          type: string
+        inputVersion:
+          type: integer
+          format: int64
+        clientRevision:
+          type: string
+        mode:
+          type: string
+        status:
+          type: string

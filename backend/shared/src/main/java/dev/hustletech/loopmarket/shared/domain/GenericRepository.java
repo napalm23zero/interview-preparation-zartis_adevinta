@@ -10,4 +10,5 @@ public interface GenericRepository<E extends GenericEntity> {
     Optional<E> findActive(UUID id);
     List<E> findAllActive(int offset, int limit);
     long countActive();
+    default void flush() {}
 }

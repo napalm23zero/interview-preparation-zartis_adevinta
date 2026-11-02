@@ -26,7 +26,7 @@ class HelloApiTest {
         assertTrue(hello.body().contains("Hello, World!"));
         HttpResponse<String> spec = get("/api/spec/openapi.yaml");
         assertEquals(200, spec.statusCode());
-        assertTrue(spec.body().contains("/hello:"));
+        assertTrue(spec.body().contains("/hello"));
         HttpResponse<String> ui = get("/api/docs/");
         assertEquals(200, ui.statusCode());
         assertTrue(ui.body().contains("../spec/openapi.yaml"));
