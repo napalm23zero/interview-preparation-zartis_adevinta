@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
+// Covers local identity creation and repair, with guard rails against wandering into another realm.
 class DemoIdentityProvisionerTest {
     @Test void recreatesMissingUsersAndSetsTheirPasswords() throws Exception {
         List<String> operations = new ArrayList<>();

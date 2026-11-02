@@ -23,6 +23,7 @@ esac
 sh scripts/initialize.sh
 
 compose() {
+  # Keep every command on the root Compose project so service names and shared volumes stay predictable.
   docker compose --project-directory "$root" --env-file "$root/.env-dev" \
     -f "$root/.docker/docker-compose.yaml" --profile apps --profile mobile "$@"
 }
@@ -42,6 +43,7 @@ done
 if [ -z "$operation" ]; then usage >&2; exit 2; fi
 
 services=$(compose config --services)
+# Validate the full request before touching containers; typos should not launch half the fleet.
 if [ "$operation" = list ] || [ "$operation" = status ]; then
   if [ "$all" -ne 0 ] || [ -n "$selected" ]; then usage >&2; exit 2; fi
 else
@@ -68,6 +70,7 @@ case "$operation" in
     set -- $selected
     compose stop "$@" ;;
   logs)
+    # Compose prefixes each line with a container name; pad tags to the widest service for readable streams.
     log_services=$(printf '%s\n' "$services" | tr '\n' ' ')
     if [ "$all" -eq 0 ]; then
       log_services=$selected
@@ -96,6 +99,7 @@ case "$operation" in
         fflush()
       }' ;;
   status)
+    # Compose reports state while Docker stats supplies live memory only for running containers.
     if ! docker info >/dev/null 2>&1; then
       printf '%s\n' 'Docker is unavailable. Start Docker and check access to the daemon.' >&2
       exit 1

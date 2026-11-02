@@ -14,6 +14,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+// Exercises opaque-token storage, expiry, malformed input, and revocation through the session port.
 class SessionServiceTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
     private final MemoryStore store = new MemoryStore();

@@ -1,3 +1,4 @@
+# AI services stay grouped while retaining independent startup for the gateway and local model runtime.
 include:
 - path: ai-gateway.compose.yaml
   env_file: ../../../.env-dev

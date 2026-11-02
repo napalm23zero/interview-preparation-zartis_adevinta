@@ -6,6 +6,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "generation_attempts")
+// Records an AI generation attempt and its immutable request identity for reliable retries and audit.
 public class GenerationEntity extends GenericEntity {
     @Column(name = "listing_id", nullable = false, updatable = false, columnDefinition = "BINARY(16)") private UUID listingId;
     @Column(name = "actor_id", nullable = false, updatable = false, columnDefinition = "BINARY(16)") private UUID actorId;

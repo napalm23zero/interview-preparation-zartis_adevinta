@@ -1,4 +1,5 @@
 services:
+  # Local OIDC provider imports the development realm; these demo credentials belong to no production galaxy.
   identity:
     build:
       context: ./identity

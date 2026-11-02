@@ -1,6 +1,7 @@
 include:
 - elasticsearch.compose.yaml
 services:
+  # Elastic's UI waits for Elasticsearch health before opening its dashboards.
   kibana:
     build:
       context: ./kibana

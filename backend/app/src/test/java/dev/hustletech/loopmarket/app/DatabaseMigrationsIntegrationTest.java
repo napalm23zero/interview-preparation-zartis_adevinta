@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @EnabledIfEnvironmentVariable(named = "LOOPMARKET_E2E", matches = "true")
+// Reapplies dev migrations to prove seed reconciliation stays idempotent across restarts.
 class DatabaseMigrationsIntegrationTest {
     @Test void devSeedsArePresentAfterRepeatedMigrations() throws Exception {
         String host = System.getenv("MYSQL_HOST");

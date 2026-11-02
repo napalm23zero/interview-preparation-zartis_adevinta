@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Path("/users")
+// Admin-only HTTP boundary for linking provider identities to local person profiles.
 public final class AccountResource extends GenericCrudResource<AccountEntity, AccountService.Input, AccountService.Input, AccountResource.View> {
     public record View(UUID id, UUID personId, String issuer, String externalSubject, String role, Instant createdAt, Instant updatedAt) {}
     private final AccountService service;

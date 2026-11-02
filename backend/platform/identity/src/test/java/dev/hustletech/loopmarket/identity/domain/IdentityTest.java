@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+// Checks identity value objects reject malformed names and non-UUIDv7 identifiers at construction.
 class IdentityTest {
     private static final UUID USER_ID = UUID.fromString("01993b57-d803-7000-8000-000000000001");
     private static final UUID PERSON_ID = UUID.fromString("01993b57-d803-7000-8000-000000000002");

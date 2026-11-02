@@ -17,6 +17,7 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
+// Ensures inherited generic endpoints still bind and validate the concrete resource's request type.
 class PersonResourceTest {
     private final MemoryRepository repository = new MemoryRepository();
     final ResourceExtension resources = ResourceExtension.builder()

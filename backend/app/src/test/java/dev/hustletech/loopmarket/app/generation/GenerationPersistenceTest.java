@@ -14,6 +14,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
+// Proves generation request keys are retry-safe and cannot be replayed with a different payload.
 class GenerationPersistenceTest {
     final DAOTestExtension database = DAOTestExtension.newBuilder()
             .addEntityClass(ListingEntity.class).addEntityClass(GenerationEntity.class).build();

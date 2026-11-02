@@ -1,7 +1,9 @@
 server {
     listen ${NGINX_PORT};
+    # Docker DNS refresh handles recreated app containers without baking their IPs into this gateway.
     resolver 127.0.0.11 valid=10s ipv6=off;
 
+    # Keep API traffic on the backend while the browser app owns all remaining routes.
     location /api/ {
         set $backend_upstream backend:${BACKEND_PORT};
         proxy_pass http://$backend_upstream;

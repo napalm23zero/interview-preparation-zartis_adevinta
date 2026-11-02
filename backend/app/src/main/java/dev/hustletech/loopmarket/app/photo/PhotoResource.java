@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Path("/photos")
+// Exposes seller-owned photo metadata, upload, and validated content through separate HTTP operations.
 public final class PhotoResource extends GenericCrudResource<PhotoEntity, PhotoService.Input, PhotoService.Input, PhotoResource.View> {
     public record View(UUID id, UUID listingId, String mediaType, long byteSize, String validationStatus, Instant createdAt, Instant updatedAt) {}
     private final SessionFactory sessions;

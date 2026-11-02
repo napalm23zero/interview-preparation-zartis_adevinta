@@ -1,4 +1,5 @@
 services:
+  # Product database; the named volume survives container replacement, as data tends to be stubborn.
   mysql:
     build:
       context: ./mysql
@@ -21,6 +22,7 @@ services:
     volumes:
     - mysql-data:/var/lib/mysql
     healthcheck:
+      # Backend startup waits for MySQL to accept authenticated connections, not merely exist.
       test:
       - CMD-SHELL
       - mysqladmin ping -h 127.0.0.1 -P "$$MYSQL_PORT" -u root -p"$$MYSQL_ROOT_PASSWORD"

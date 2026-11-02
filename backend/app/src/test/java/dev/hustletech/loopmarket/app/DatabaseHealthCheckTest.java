@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+// Covers healthy and unavailable datasource responses without opening a real database.
 class DatabaseHealthCheckTest {
     @Test
     void checksWhetherAConnectionCanBeOpened() {

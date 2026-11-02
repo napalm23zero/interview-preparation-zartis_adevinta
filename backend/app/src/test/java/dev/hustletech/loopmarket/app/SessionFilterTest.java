@@ -26,6 +26,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
+// Verifies each request rechecks Redis and MySQL, including fail-closed dependency errors.
 class SessionFilterTest {
     private final MemoryStore store = new MemoryStore();
     private final java.util.concurrent.atomic.AtomicLong accountVersion = new java.util.concurrent.atomic.AtomicLong();

@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Priority(Priorities.AUTHENTICATION)
+// Resolves supplied bearer tokens against Redis and the current account before resources run.
 public final class SessionFilter implements ContainerRequestFilter {
     private static final Logger LOG = LoggerFactory.getLogger(SessionFilter.class);
     private final SessionService sessions;
@@ -28,6 +29,7 @@ public final class SessionFilter implements ContainerRequestFilter {
 
     @Override public void filter(ContainerRequestContext request) {
         String authorization = request.getHeaderString(HttpHeaders.AUTHORIZATION);
+        // Public endpoints stay public without credentials; malformed supplied credentials fail closed.
         if (authorization == null) return;
         if (!authorization.startsWith("Bearer ")) { unauthorized(request); return; }
         try {
@@ -49,6 +51,7 @@ public final class SessionFilter implements ContainerRequestFilter {
     }
 
     private String activeRole(UUID id, long version) throws java.sql.SQLException {
+        // Recheck account and profile state on every request; auth_version revokes stale role snapshots.
         try (Connection connection = database.getConnection();
              PreparedStatement statement = connection.prepareStatement("SELECT u.account_role FROM users u JOIN persons p ON p.id = u.person_id AND p.deleted_at IS NULL WHERE u.id = UUID_TO_BIN(?) AND u.auth_version = ? AND u.deleted_at IS NULL")) {
             statement.setString(1, id.toString());

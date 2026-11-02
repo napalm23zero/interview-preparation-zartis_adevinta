@@ -1,4 +1,5 @@
 services:
+  # Placeholder workspace for the future web app; source and dependencies persist for local tooling.
   frontend:
     build:
       context: .

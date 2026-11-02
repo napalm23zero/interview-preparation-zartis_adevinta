@@ -11,6 +11,7 @@ import org.hibernate.SessionFactory;
 import java.time.Clock;
 import java.util.UUID;
 
+// Applies buyer rules and serializes interest creation against listing archival.
 public final class InterestService extends GenericCrudService<InterestEntity, InterestService.Input, InterestService.Input> {
     public record Input(@NotNull UUID listingId) {}
     private final UUID buyer;
@@ -20,6 +21,7 @@ public final class InterestService extends GenericCrudService<InterestEntity, In
     }
     @Override public InterestEntity create(Input input) {
         requireAvailableListing(input.listingId());
+        // Active retries are idempotent; deleted interests keep their unique key reserved.
         InterestEntity existing = sessions.getCurrentSession().createQuery(
                 "from InterestEntity where listingId = :listing and buyerId = :buyer", InterestEntity.class)
                 .setParameter("listing", input.listingId()).setParameter("buyer", buyer).uniqueResult();
@@ -38,7 +40,7 @@ public final class InterestService extends GenericCrudService<InterestEntity, In
         entity.moveTo(input.listingId());
     }
     private void requireAvailableListing(UUID id) {
-        // Lock the listing so an archive cannot outrun a buyer's interest, even at lightspeed.
+        // Lock the listing so archiving cannot race a buyer's interest, even at lightspeed.
         ListingEntity listing = sessions.getCurrentSession().find(ListingEntity.class, id, LockModeType.PESSIMISTIC_WRITE);
         if (listing == null || listing.isDeleted() || !"PUBLISHED".equals(listing.getStatus())) {
             throw new ClientErrorException("Listing is unavailable", 404);

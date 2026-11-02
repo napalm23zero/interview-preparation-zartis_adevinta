@@ -7,6 +7,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "listings")
+// Stores seller-owned marketplace items; status and version guard publication and concurrent edits.
 public class ListingEntity extends GenericEntity {
     @Column(name = "seller_id", nullable = false, updatable = false, columnDefinition = "BINARY(16)") private UUID sellerId;
     @Column(length = 160) private String title;

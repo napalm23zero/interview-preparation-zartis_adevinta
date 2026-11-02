@@ -1,4 +1,5 @@
 services:
+  # Vector store for AI retrieval; model-independent embeddings can enter this vault later.
   qdrant:
     build:
       context: ./qdrant

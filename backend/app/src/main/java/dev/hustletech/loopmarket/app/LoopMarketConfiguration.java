@@ -6,6 +6,7 @@ import io.dropwizard.db.DataSourceFactory;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+// Maps YAML and environment substitutions into validated settings for the application and its adapters.
 public final class LoopMarketConfiguration extends Configuration {
     private boolean migrationsEnabled;
     private String migrationContexts = "";

@@ -16,6 +16,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
+// Exercises profile persistence, caller scoping, and account-safe soft deletion against MySQL semantics.
 class PersonPersistenceTest {
     final DAOTestExtension database = DAOTestExtension.newBuilder().addEntityClass(PersonEntity.class).addEntityClass(AccountEntity.class).build();
 

@@ -7,6 +7,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "listing_photos")
+// Tracks one listing image and its validation state; file bytes live in storage, not in MySQL.
 public class PhotoEntity extends GenericEntity {
     @Column(name = "listing_id", nullable = false, updatable = false, columnDefinition = "BINARY(16)") private UUID listingId;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "listing_id", insertable = false, updatable = false) private ListingEntity listing;

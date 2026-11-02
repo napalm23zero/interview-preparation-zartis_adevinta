@@ -15,6 +15,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
+// Checks that only published third-party listings accept one active interest per buyer.
 class InterestPersistenceTest {
     final DAOTestExtension database = DAOTestExtension.newBuilder()
             .addEntityClass(ListingEntity.class).addEntityClass(InterestEntity.class).build();

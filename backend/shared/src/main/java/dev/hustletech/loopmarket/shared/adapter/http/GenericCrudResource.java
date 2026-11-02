@@ -11,6 +11,7 @@ import jakarta.ws.rs.core.*;
 import java.util.List;
 import java.util.UUID;
 
+// Common REST endpoints handle HTTP mechanics; each resource supplies policy and its safe response view.
 public abstract class GenericCrudResource<E extends GenericEntity, C, U, R> {
     public enum Action { CREATE, READ, LIST, UPDATE, DELETE }
 
@@ -19,6 +20,7 @@ public abstract class GenericCrudResource<E extends GenericEntity, C, U, R> {
     protected abstract R toResponse(E entity);
 
     private GenericCrudService<E, C, U> service(SecurityContext security, Action action, UUID id) {
+        // Reject missing identity before resource-specific policy runs; even a Sith needs a badge.
         if (security == null || security.getUserPrincipal() == null) throw new NotAuthorizedException("Bearer");
         return authorizedService(security, action, id);
     }
@@ -41,6 +43,7 @@ public abstract class GenericCrudResource<E extends GenericEntity, C, U, R> {
                         @QueryParam("size") @DefaultValue("10") int size) {
         if (page < 1 || size < 1) throw new BadRequestException("Page and size must be positive");
         size = Math.min(size, 50);
+        // Widen before multiplying; integer overflow makes a poor navigation system, even for a Sith.
         long offset = (long) (page - 1) * size;
         if (offset > Integer.MAX_VALUE) throw new BadRequestException("Page is out of range");
         GenericCrudService<E, C, U> service = service(security, Action.LIST, null);

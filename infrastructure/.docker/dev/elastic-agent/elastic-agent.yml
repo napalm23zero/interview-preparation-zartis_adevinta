@@ -3,6 +3,7 @@ outputs:
     type: elasticsearch
     hosts: ["${env.ELASTICSEARCH_URL}"]
 inputs:
+  # Filebeat-like collection stays inside Elastic Agent, avoiding a second log shipper to babysit.
   - id: application-logs
     type: filestream
     streams:

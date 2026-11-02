@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
+// Identity profile data stays immutable and validates UUIDv7 before joining the galactic registry.
 public record Person(UUID id, String displayName, Instant createdAt, Instant updatedAt, Instant deletedAt) {
     public Person {
         Objects.requireNonNull(id, "id");

@@ -1,3 +1,4 @@
+# Shared dependencies and tooling are included once, so app stacks reuse the same dev services.
 include:
 - path: nginx.compose.yaml
   env_file: ../../../.env-dev

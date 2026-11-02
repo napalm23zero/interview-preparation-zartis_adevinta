@@ -13,6 +13,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
+// Verifies one-photo ownership, pending-to-valid image transitions, and content validation boundaries.
 class PhotoPersistenceTest {
     final DAOTestExtension database = DAOTestExtension.newBuilder()
             .addEntityClass(ListingEntity.class).addEntityClass(PhotoEntity.class).build();

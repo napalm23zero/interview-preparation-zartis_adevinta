@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+// Shared CRUD orchestration removes repetition; product services supply entity-specific mapping and rules.
 public abstract class GenericCrudService<E extends GenericEntity, C, U> {
     protected final GenericRepository<E> repository;
     private final Clock clock;
@@ -26,6 +27,7 @@ public abstract class GenericCrudService<E extends GenericEntity, C, U> {
         E entity = createEntity(input);
         entity.useClock(clock);
         E persisted = repository.create(entity);
+        // Flush here so database constraints surface inside this request, not after its response.
         repository.flush();
         return persisted;
     }
@@ -44,6 +46,7 @@ public abstract class GenericCrudService<E extends GenericEntity, C, U> {
     }
     public Outcome<E> delete(UUID id) {
         return repository.findActive(id).<Outcome<E>>map(entity -> {
+            // Soft deletion preserves foreign-key history while removing the entity from normal reads.
             entity.softDelete(clock);
             return new Outcome.Success<>(entity);
         }).orElseGet(Outcome.NotFound::new);

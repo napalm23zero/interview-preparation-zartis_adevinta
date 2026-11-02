@@ -1,4 +1,5 @@
 services:
+  # The local edge routes /api to Dropwizard and browser traffic to the frontend.
   nginx:
     build:
       context: ./nginx

@@ -14,12 +14,14 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 @EnabledIfEnvironmentVariable(named = "LOOPMARKET_E2E", matches = "true")
+// End-to-end contract for login, role checks, ownership filters, marketplace flow, and revocation.
 class SessionCrudIntegrationTest {
     private static final String BASE = System.getenv().getOrDefault("LOOPMARKET_E2E_URL", "http://backend:8080/api");
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     private final ObjectMapper json = new ObjectMapper();
 
     @Test void sessionsEnforceRolesOwnershipAndRevocation() throws Exception {
+        // Start with both roles and prove authentication and administrator-only identity management.
         String admin = login("darth.vader", "dark-side-1977");
         String user = login("luke.skywalker", "force-1977");
         assertEquals(401, call("GET", "/persons", null, null).statusCode());
@@ -49,6 +51,7 @@ class SessionCrudIntegrationTest {
         assertEquals(204, call("DELETE", "/users/" + accountId, admin, null).statusCode());
         assertEquals(204, call("DELETE", "/persons/" + personId, admin, null).statusCode());
 
+        // Seller-owned listing edits require the current version; generation attempts are scoped to their actor.
         HttpResponse<String> created = call("POST", "/listings", admin,
                 "{\"title\":\"Integration " + UUID.randomUUID() + "\"}");
         assertEquals(201, created.statusCode(), created.body());
@@ -77,6 +80,7 @@ class SessionCrudIntegrationTest {
         assertEquals(200, call("PUT", "/generations/" + generationId, admin, "{\"status\":\"FAILED\"}").statusCode());
         assertEquals(204, call("DELETE", "/generations/" + generationId, admin, null).statusCode());
         assertEquals(409, call("POST", "/listings/" + id + "/publications", admin, "{\"expectedVersion\":1}").statusCode());
+        // A photo must be uploaded and validated before publication; only then can a buyer express interest.
         HttpResponse<String> photo = call("POST", "/photos", admin,
                 "{\"listingId\":\"" + id + "\",\"mediaType\":\"image/png\",\"byteSize\":1}");
         assertEquals(201, photo.statusCode(), photo.body());
@@ -115,6 +119,7 @@ class SessionCrudIntegrationTest {
         assertEquals(200, call("POST", "/listings/" + id + "/archives", admin, "{\"expectedVersion\":2}").statusCode());
         assertEquals(204, call("DELETE", "/listings/" + id, admin, null).statusCode());
         assertEquals(404, call("GET", "/listings/" + id, admin, null).statusCode());
+        // Logout revokes each token immediately, even before its Redis TTL expires.
         assertEquals(204, call("DELETE", "/sessions", admin, null).statusCode());
         assertEquals(401, call("GET", "/persons", admin, null).statusCode());
         assertEquals(204, call("DELETE", "/sessions", user, null).statusCode());

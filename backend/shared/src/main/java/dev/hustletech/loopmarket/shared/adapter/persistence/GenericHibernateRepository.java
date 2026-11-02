@@ -15,7 +15,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiFunction;
 
-// Uses the current unit of work; ownership remains the caller's responsibility.
+// Hibernate adapter for the repository port; callers provide owner scope, because IDs are no cloaks.
 public class GenericHibernateRepository<E extends GenericEntity> implements GenericRepository<E> {
     private final SessionFactory sessions;
     private final Class<E> entityType;
@@ -47,6 +47,7 @@ public class GenericHibernateRepository<E extends GenericEntity> implements Gene
         CriteriaBuilder builder = session.getCriteriaBuilder();
         CriteriaQuery<E> query = builder.createQuery(entityType);
         Root<E> root = query.from(entityType);
+        // Apply ownership scope and soft-delete filtering together; an ID alone grants no territory.
         query.select(root).where(builder.equal(root.get("id"), id), builder.isNull(root.get("deletedAt")), scope.apply(builder, root));
         return session.createQuery(query).uniqueResultOptional();
     }
@@ -68,6 +69,7 @@ public class GenericHibernateRepository<E extends GenericEntity> implements Gene
         CriteriaBuilder builder = session.getCriteriaBuilder();
         CriteriaQuery<Long> query = builder.createQuery(Long.class);
         Root<E> root = query.from(entityType);
+        // Match list visibility exactly; pagination totals make a surprisingly effective spy.
         query.select(builder.count(root)).where(builder.isNull(root.get("deletedAt")), scope.apply(builder, root));
         return session.createQuery(query).getSingleResult();
     }

@@ -1,4 +1,5 @@
 services:
+  # Placeholder for model routing; the container is wired to local Ollama and Qdrant for future implementation.
   ai-gateway:
     build:
       context: ./gateway

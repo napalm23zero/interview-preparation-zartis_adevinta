@@ -1,4 +1,5 @@
 services:
+  # Single-node local search and log store; security is disabled only for this isolated development setup.
   elasticsearch:
     build:
       context: ./elasticsearch

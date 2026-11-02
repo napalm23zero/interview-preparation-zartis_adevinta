@@ -1,3 +1,4 @@
+# Local feature switches and service locations are substituted from .env-dev at startup.
 migrationsEnabled: true
 migrationContexts: dev
 identityIssuer: "http://identity:${IDENTITY_PORT}/realms/loopmarket-dev"
@@ -18,6 +19,7 @@ server:
       bindHost: 127.0.0.1
 
 database:
+  # UTC keeps MySQL DATETIME values aligned with Java Instant audit fields.
   driverClass: com.mysql.cj.jdbc.Driver
   url: "jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}?connectTimeout=5000&socketTimeout=5000"
   user: "${MYSQL_USER}"

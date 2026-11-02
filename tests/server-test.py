@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 
 root = Path(__file__).resolve().parents[1]
+# Isolate the CLI contract from a running Docker daemon while retaining Compose's real service discovery.
 temp = Path(tempfile.mkdtemp(prefix='zartis-server-test-'))
 real_docker = shutil.which('docker')
 assert real_docker
@@ -36,6 +37,7 @@ with os.fdopen(fd, 'w') as out:
 env = dict(os.environ, PATH=f'{temp}:{os.environ["PATH"]}', REAL_DOCKER=real_docker, MOCK_LOG=str(temp / 'calls'))
 
 def run(*args):
+    # Run outside the repository to verify the script resolves its own root correctly.
     return subprocess.run([str(root / '.docker/server.sh'), *args], cwd='/private/tmp', env=env, text=True, capture_output=True)
 
 def calls():

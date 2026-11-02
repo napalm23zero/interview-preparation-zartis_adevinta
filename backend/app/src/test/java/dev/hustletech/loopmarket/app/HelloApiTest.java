@@ -12,6 +12,7 @@ import java.net.http.HttpResponse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+// Starts the real Dropwizard application and checks the greeting, API docs, Swagger assets, and health endpoint.
 class HelloApiTest {
     @RegisterExtension
     static final DropwizardAppExtension<LoopMarketConfiguration> APP =
@@ -21,6 +22,7 @@ class HelloApiTest {
 
     @Test
     void servesGreetingAndSwaggerResources() throws Exception {
+        // Exercise mounted assets over HTTP so a green unit test cannot hide a missing route.
         HttpResponse<String> hello = get("/api/hello");
         assertEquals(200, hello.statusCode());
         assertTrue(hello.body().contains("Hello, World!"));

@@ -11,6 +11,7 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+// Verifies shared UUID, UTC audit, update, and soft-delete behavior without needing a database.
 class GenericCrudServiceTest {
     private static final Instant NOW = Instant.parse("2026-01-02T03:04:05Z");
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);

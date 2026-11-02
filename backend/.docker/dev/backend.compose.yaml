@@ -3,6 +3,7 @@ include:
 - ../../../infrastructure/.docker/dev/redis.compose.yaml
 - ../../../infrastructure/.docker/dev/identity.compose.yaml
 services:
+  # Development app compiles the Maven reactor on startup and waits for its stateful dependencies to be healthy.
   backend:
     build:
       context: .

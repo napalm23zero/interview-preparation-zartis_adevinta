@@ -1,3 +1,4 @@
+-- Store UUIDs compactly; application timestamps and seed functions use UTC.
 CREATE TABLE persons (
     id BINARY(16) NOT NULL PRIMARY KEY,
     display_name VARCHAR(120) NOT NULL,
@@ -52,6 +53,7 @@ CREATE TABLE listing_photos (
     created_at DATETIME(6) NOT NULL,
     updated_at DATETIME(6) NOT NULL,
     deleted_at DATETIME(6) NULL,
+    -- UNIQUE permits multiple NULLs, preserving deleted history while allowing one active photo per listing.
     active_listing_id BINARY(16) GENERATED ALWAYS AS (CASE WHEN deleted_at IS NULL THEN listing_id ELSE NULL END) STORED,
     CONSTRAINT fk_photos_listing FOREIGN KEY (listing_id) REFERENCES listings(id),
     CONSTRAINT uq_photos_active_listing UNIQUE (active_listing_id),

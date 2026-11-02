@@ -1,3 +1,4 @@
+# Keep this area's environment file explicit so the stack also works when invoked on its own.
 include:
 - path: frontend.compose.yaml
   env_file: ../../../.env-dev

@@ -26,6 +26,7 @@ import javax.imageio.stream.ImageInputStream;
 import java.util.Iterator;
 import java.util.Optional;
 
+// Owns photo metadata and safe file handling; a listing stays unpublished until image bytes are validated.
 public final class PhotoService extends GenericCrudService<PhotoEntity, PhotoService.Input, PhotoService.Input> {
     public record Input(@NotNull UUID listingId, @NotNull @Pattern(regexp = "image/(jpeg|png)") String mediaType,
                         @Min(1) @Max(10485760) long byteSize) {}
@@ -65,6 +66,7 @@ public final class PhotoService extends GenericCrudService<PhotoEntity, PhotoSer
             if (bytes.length == 0 || bytes.length > 10485760) throw new ClientErrorException("Invalid image size", 400);
             String actualType = validateImage(bytes);
             if (!actualType.equals(photo.mediaType())) throw new ClientErrorException("Image type does not match metadata", 400);
+            // Generate the path server-side; client filenames never get a vote in filesystem navigation.
             String key = UUID.randomUUID().toString();
             try {
                 Files.createDirectories(storage);
@@ -78,6 +80,7 @@ public final class PhotoService extends GenericCrudService<PhotoEntity, PhotoSer
     }
 
     public Optional<Image> content(UUID id) {
+        // Only validated, active images are readable; pending uploads do not get a public URL yet.
         return repository.findActive(id).filter(photo -> "VALID".equals(photo.validationStatus())).map(photo -> {
             String key = photo.storageKey();
             try {
@@ -99,6 +102,7 @@ public final class PhotoService extends GenericCrudService<PhotoEntity, PhotoSer
             try {
                 reader.setInput(input, true, true);
                 int width = reader.getWidth(0), height = reader.getHeight(0);
+                // Bound decoded pixels as well as bytes to stop tiny compressed files becoming giant surprises.
                 if (width < 1 || height < 1 || (long) width * height > 16000000) throw new ClientErrorException("Image dimensions exceed the limit", 400);
                 String format = reader.getFormatName();
                 String type = "png".equalsIgnoreCase(format) ? "image/png" : "jpeg".equalsIgnoreCase(format) ? "image/jpeg" : "";

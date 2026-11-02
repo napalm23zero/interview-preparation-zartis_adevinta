@@ -1,3 +1,4 @@
+# In-memory database keeps API tests isolated from Docker and disposable development data.
 server:
   rootPath: /api/*
   applicationConnectors:

@@ -1,4 +1,5 @@
 name: zartis
+# One project file composes the independently maintained area stacks under a single shared network.
 include:
 - path: backend/.docker/dev/docker-compose.yaml
   env_file: .env-dev

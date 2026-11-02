@@ -14,6 +14,7 @@ import jakarta.persistence.LockModeType;
 import jakarta.ws.rs.ClientErrorException;
 import org.hibernate.SessionFactory;
 
+// Adds identity-specific checks on top of generic CRUD, including a locked active-profile link.
 public final class AccountService extends GenericCrudService<AccountEntity, AccountService.Input, AccountService.Input> {
     public record Input(@NotNull UUID personId, @NotBlank @Size(max = 255) String issuer,
                         @NotBlank @Size(max = 255) String externalSubject,
@@ -32,7 +33,7 @@ public final class AccountService extends GenericCrudService<AccountEntity, Acco
         entity.update(input.personId(), input.issuer(), input.externalSubject(), input.role());
     }
     private void requireActivePerson(UUID id) {
-        // Keep the account and profile aligned, even when the dark side races a deletion.
+        // Lock the profile while binding an account, so deletion cannot win halfway through enlistment.
         PersonEntity person = sessions.getCurrentSession().find(PersonEntity.class, id, LockModeType.PESSIMISTIC_WRITE);
         if (person == null || person.isDeleted()) throw new ClientErrorException("Active person not found", 409);
     }

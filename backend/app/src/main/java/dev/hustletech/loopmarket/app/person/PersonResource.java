@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Path("/persons")
+// Admin-facing profile endpoints expose a small view and never serialize the persistence entity directly.
 public final class PersonResource extends GenericCrudResource<PersonEntity, PersonService.Input, PersonService.Input, PersonResource.View> {
     public record View(UUID id, String displayName, Instant createdAt, Instant updatedAt) {}
     private final PersonService service;

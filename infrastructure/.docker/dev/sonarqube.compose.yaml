@@ -1,6 +1,7 @@
 include:
 - sonar-postgres.compose.yaml
 services:
+  # Code quality server keeps its own PostgreSQL database; project data is not mixed with marketplace data.
   sonarqube:
     build:
       context: ./sonarqube

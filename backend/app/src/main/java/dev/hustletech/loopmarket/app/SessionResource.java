@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 @Path("/sessions")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
+// Exchanges verified provider credentials for the API's revocable opaque session.
 public final class SessionResource {
     private static final Logger LOG = LoggerFactory.getLogger(SessionResource.class);
     private static final Duration TTL = Duration.ofMinutes(30);
@@ -54,6 +55,7 @@ public final class SessionResource {
     }
 
     private Response authenticate(Login login) throws Exception {
+        // Credentials go to the identity provider; only our opaque session leaves this API.
         String form = "grant_type=password&scope=openid&client_id=loopmarket-dev&username=" + encode(login.username()) + "&password=" + encode(login.password());
         HttpRequest tokenRequest = HttpRequest.newBuilder(URI.create(issuer + "/protocol/openid-connect/token"))
                 .timeout(Duration.ofSeconds(10)).header("Content-Type", "application/x-www-form-urlencoded")
@@ -68,6 +70,7 @@ public final class SessionResource {
                 .timeout(Duration.ofSeconds(10)).header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken).GET().build();
         HttpResponse<String> userInfo = http.send(userInfoRequest, HttpResponse.BodyHandlers.ofString());
         if (userInfo.statusCode() != 200) return Response.status(503).build();
+        // Resolve the provider subject locally so deleted users cannot mint fresh sessions.
         String subject = json.readTree(userInfo.body()).path("sub").asText();
         if (subject.isBlank()) return Response.status(503).build();
         AccountIdentity user = findUser(subject);

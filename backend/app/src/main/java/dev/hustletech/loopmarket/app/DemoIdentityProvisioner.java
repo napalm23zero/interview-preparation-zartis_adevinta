@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+// Reconciles fixed development users with the local identity provider while the app is running.
 final class DemoIdentityProvisioner implements Managed {
     private static final Logger LOG = LoggerFactory.getLogger(DemoIdentityProvisioner.class);
     private record DemoUser(String id, String username, String password, String firstName, String lastName) {}
@@ -59,7 +60,7 @@ final class DemoIdentityProvisioner implements Managed {
 
     @Override public void stop() { executor.shutdownNow(); }
 
-    // The local Empire returns its demo characters without resetting an existing realm.
+    // Dev-only reconciliation restores known demo credentials; keep this provisioner out of production.
     private void reconcileSafely() {
         try { reconcile(); }
         catch (InterruptedException exception) { Thread.currentThread().interrupt(); }
@@ -67,6 +68,7 @@ final class DemoIdentityProvisioner implements Managed {
     }
 
     void reconcile() throws Exception {
+        // Obtain a short-lived admin token, then create or repair only the known development identities.
         String form = "grant_type=password&client_id=admin-cli&username=" + encode(adminUser) + "&password=" + encode(adminPassword);
         Result auth = transport.send("/realms/master/protocol/openid-connect/token", "POST", null,
                 "application/x-www-form-urlencoded", form);

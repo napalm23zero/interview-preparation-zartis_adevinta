@@ -2,7 +2,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-# Simulate the fleet; keep the real Compose parser in command.
+# Fake resource creation while retaining the real Compose parser, because YAML gets enough dark magic already.
 docker() {
   case "${1-}:${2-}" in
     info:) [ "${MOCK_UNAVAILABLE:-0}" = 0 ]; return ;;

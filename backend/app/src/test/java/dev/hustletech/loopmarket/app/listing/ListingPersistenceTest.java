@@ -14,6 +14,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(DropwizardExtensionsSupport.class)
+// Covers seller scoping and optimistic versions against the real persistence mapping.
 class ListingPersistenceTest {
     final DAOTestExtension database = DAOTestExtension.newBuilder().addEntityClass(ListingEntity.class).build();
 

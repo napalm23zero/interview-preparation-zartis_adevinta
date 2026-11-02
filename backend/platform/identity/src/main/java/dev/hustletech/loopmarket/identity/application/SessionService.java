@@ -12,6 +12,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+// Creates, validates, and revokes opaque bearer sessions after provider credentials are verified.
 public final class SessionService {
     private final SessionStore store;
     private final Clock clock;
@@ -29,6 +30,7 @@ public final class SessionService {
         Objects.requireNonNull(ttl);
         if (ttl.isNegative() || ttl.isZero() || ttl.toMillis() < 1) throw new IllegalArgumentException("Session TTL must be positive");
         byte[] bytes = new byte[32];
+        // Redis stores only a digest-derived key; a database snapshot cannot reveal the bearer token.
         for (int attempt = 0; attempt < 3; attempt++) {
             random.nextBytes(bytes);
             String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
@@ -38,6 +40,7 @@ public final class SessionService {
     }
 
     public Optional<SessionStore.Session> authenticate(String token) {
+        // Validate the opaque token's shape before it can become a Redis key.
         if (token == null || !token.matches("[A-Za-z0-9_-]{43}")) return Optional.empty();
         return store.find(key(token)).filter(session -> clock.instant().isBefore(session.expiresAt()));
     }

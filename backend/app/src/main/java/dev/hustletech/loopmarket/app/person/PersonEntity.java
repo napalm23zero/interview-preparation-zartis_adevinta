@@ -7,6 +7,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "persons")
+// Persistence model for a human profile; provider credentials belong to AccountEntity, as they should.
 public class PersonEntity extends GenericEntity {
     @Column(name = "display_name", nullable = false, length = 120)
     private String displayName;

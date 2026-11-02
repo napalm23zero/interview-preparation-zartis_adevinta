@@ -14,6 +14,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 @MappedSuperclass
+// Common identity and audit fields keep every persisted model on the same timeline.
 public abstract class GenericEntity {
     @Id
     @Column(nullable = false, updatable = false, columnDefinition = "BINARY(16)")
@@ -41,7 +42,7 @@ public abstract class GenericEntity {
         this.clock = Objects.requireNonNull(clock);
     }
 
-    // UUIDv7 places time first; even the Sith appreciate an orderly timeline.
+    // UUIDv7 keeps epoch milliseconds in its high bits, so IDs sort roughly by creation time.
     @PrePersist
     protected void onCreate() {
         if (id != null) throw new IllegalStateException("New entity must not have an id");
@@ -56,6 +57,7 @@ public abstract class GenericEntity {
 
     @PreUpdate
     protected void onUpdate() {
+        // The entity owns UTC audit time; clients do not get to rewrite history.
         updatedAt = clock.instant();
     }
 
@@ -74,7 +76,7 @@ public abstract class GenericEntity {
         updatedAt = this.clock.instant();
     }
 
-    // Keep the record in the archives while hiding it from active reads.
+    // Retain the row for references and audit while repositories hide it from active reads.
     public final void softDelete(Clock clock) {
         useClock(clock);
         Instant now = this.clock.instant();

@@ -1,4 +1,5 @@
 services:
+  # Runs local models and keeps downloaded weights in a named volume instead of fetching them every boot.
   ollama:
     build:
       context: ./ollama

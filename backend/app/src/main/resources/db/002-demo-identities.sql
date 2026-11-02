@@ -1,3 +1,4 @@
+-- Stable development IDs keep local accounts aligned across database and provider resets.
 INSERT INTO persons (id, display_name, created_at, updated_at, deleted_at)
 VALUES
     (UUID_TO_BIN('01900000-0000-7000-8000-000000000001'), 'Darth Vader', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), NULL),

@@ -15,6 +15,7 @@ import java.time.Clock;
 import java.util.HexFormat;
 import java.util.UUID;
 
+// Enforces draft ownership, request idempotency, and admin-only status changes for generation records.
 public final class GenerationService extends GenericCrudService<GenerationEntity, GenerationService.Create, GenerationService.Update> {
     public record Create(@NotNull UUID listingId, @NotBlank @Size(max = 128) String requestKey,
                          @NotNull @PositiveOrZero Long inputVersion, @NotBlank @Size(max = 128) String clientRevision,
@@ -30,6 +31,7 @@ public final class GenerationService extends GenericCrudService<GenerationEntity
     @Override public GenerationEntity create(Create input) {
         ListingEntity listing = requireDraft(input.listingId());
         String fingerprint = fingerprint(input);
+        // A request key may be retried, but never reused to describe different generation input.
         GenerationEntity existing = sessions.getCurrentSession().createQuery(
                 "from GenerationEntity where actorId = :actor and requestKey = :key", GenerationEntity.class)
                 .setParameter("actor", actor).setParameter("key", input.requestKey()).uniqueResult();
@@ -57,6 +59,7 @@ public final class GenerationService extends GenericCrudService<GenerationEntity
     private static String fingerprint(Create input) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            // Length-prefix fields so distinct input tuples cannot collapse to identical concatenated bytes.
             for (String part : new String[]{input.listingId().toString(), Long.toString(input.inputVersion()), input.clientRevision(), input.mode()}) {
                 byte[] bytes = part.getBytes(StandardCharsets.UTF_8);
                 digest.update(java.nio.ByteBuffer.allocate(4).putInt(bytes.length).array());

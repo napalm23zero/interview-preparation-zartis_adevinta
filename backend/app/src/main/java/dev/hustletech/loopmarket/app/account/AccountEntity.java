@@ -10,6 +10,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "users")
+// Maps a local authorization account to a provider subject; authVersion invalidates older sessions after changes.
 public class AccountEntity extends GenericEntity {
     @Column(name = "person_id", nullable = false, columnDefinition = "BINARY(16)")
     private UUID personId;

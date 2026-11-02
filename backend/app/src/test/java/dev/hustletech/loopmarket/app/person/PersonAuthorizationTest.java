@@ -9,6 +9,7 @@ import java.security.Principal;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+// Confirms ordinary users cannot use admin-only person endpoints; nice try, young Sith.
 class PersonAuthorizationTest {
     @Test void regularUserCannotReadOrChangePeople() {
         PersonResource resource = new PersonResource(null);

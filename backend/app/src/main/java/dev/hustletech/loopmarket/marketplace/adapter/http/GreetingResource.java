@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.MediaType;
 
 @Path("/hello")
 @Produces(MediaType.APPLICATION_JSON)
+// This adapter maps the use-case result to the public JSON contract and keeps JAX-RS at the edge.
 public final class GreetingResource {
     private final Greet greet;
 

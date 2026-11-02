@@ -1,6 +1,7 @@
 include:
 - elasticsearch.compose.yaml
 services:
+  # One Elastic Agent tails application files and collects CPU and memory metrics for Elasticsearch.
   elastic-agent:
     build:
       context: ./elastic-agent

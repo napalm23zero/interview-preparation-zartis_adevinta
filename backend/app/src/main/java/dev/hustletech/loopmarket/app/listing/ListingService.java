@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.util.UUID;
 
+// Enforces listing ownership, edit versions, and the draft-to-published-to-archived business flow.
 public final class ListingService extends GenericCrudService<ListingEntity, ListingService.Input, ListingService.Input> {
     public record Input(@Size(max = 160) String title, @Size(max = 10000) String description,
                         @Size(max = 80) String category, @Size(max = 80) String condition,
@@ -33,6 +34,7 @@ public final class ListingService extends GenericCrudService<ListingEntity, List
         return listing;
     }
     @Override protected void updateEntity(ListingEntity listing, Input input) {
+        // Require the caller's observed version so stale edits cannot silently overwrite newer work.
         if (input.expectedVersion() == null || input.expectedVersion() != listing.version()) {
             throw new ClientErrorException("Listing version does not match", 409);
         }
@@ -50,7 +52,9 @@ public final class ListingService extends GenericCrudService<ListingEntity, List
     }
 
     public Outcome<ListingEntity> transition(UUID id, long expectedVersion, boolean publish) {
+        // Lock, recheck version and prerequisites, then persist one legal state transition atomically.
         return repository.findActive(id).<Outcome<ListingEntity>>map(listing -> {
+            // Serialize publish/archive against photo and interest operations on this listing.
             sessions.getCurrentSession().refresh(listing, LockModeType.PESSIMISTIC_WRITE);
             if (listing.isDeleted() || !seller.equals(listing.sellerId())) return new Outcome.NotFound<>();
             if (listing.version() != expectedVersion) throw new ClientErrorException("Listing version does not match", 409);
@@ -75,6 +79,7 @@ public final class ListingService extends GenericCrudService<ListingEntity, List
     private static boolean blank(String value) { return value == null || value.isBlank(); }
 
     private void requirePhoto(UUID id) {
+        // Require a validated image, not merely upload metadata, before publication.
         Long photos = sessions.getCurrentSession().createQuery(
                 "select count(p) from PhotoEntity p where p.listingId = :id and p.deletedAt is null and p.validationStatus = 'VALID'", Long.class)
                 .setParameter("id", id).getSingleResult();

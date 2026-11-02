@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Path("/generations")
+// Actor-scoped API for tracking generation attempts; it records requests without calling a model provider yet.
 public final class GenerationResource extends GenericCrudResource<GenerationEntity, GenerationService.Create, GenerationService.Update, GenerationResource.View> {
     public record View(UUID id, UUID listingId, UUID actorId, String requestKey, long inputVersion, String clientRevision,
                        String mode, String status, Instant createdAt, Instant updatedAt) {}

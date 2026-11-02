@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Path("/listings")
+// Seller-scoped listing API plus explicit publish/archive transitions for the listing lifecycle.
 public final class ListingResource extends GenericCrudResource<ListingEntity, ListingService.Input, ListingService.Input, ListingResource.View> {
     public record View(UUID id, UUID sellerId, String title, String description, String category, String condition,
                        String city, BigDecimal price, String currency, String status, long version, Instant createdAt, Instant updatedAt) {}
@@ -51,6 +52,7 @@ public final class ListingResource extends GenericCrudResource<ListingEntity, Li
     }
 
     private Response transition(SecurityContext security, UUID id, Transition transition, boolean publish) {
+        // Reuse the same owner-scoped service as CRUD; lifecycle actions do not bypass authorization.
         if (security == null || security.getUserPrincipal() == null) throw new NotAuthorizedException("Bearer");
         ListingService service = (ListingService) authorizedService(security, Action.UPDATE, id);
         return service.transition(id, transition.expectedVersion(), publish).fold(

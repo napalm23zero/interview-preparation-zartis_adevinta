@@ -1,4 +1,5 @@
 services:
+  # Holds opaque login sessions; append-only persistence helps local sessions survive a restart.
   redis:
     build:
       context: ./redis

@@ -1,4 +1,5 @@
 services:
+  # Dedicated persistence for SonarQube metadata, separate from both the product and identity stores.
   sonar-postgres:
     build:
       context: ./sonar-postgres

@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Path("/interests")
+// Buyer-scoped API: repository filtering makes other buyers' interest rows invisible, no Force tricks required.
 public final class InterestResource extends GenericCrudResource<InterestEntity, InterestService.Input, InterestService.Input, InterestResource.View> {
     public record View(UUID id, UUID listingId, UUID buyerId, Instant createdAt, Instant updatedAt) {}
     private final SessionFactory sessions;

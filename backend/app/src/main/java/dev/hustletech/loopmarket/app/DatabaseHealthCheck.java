@@ -4,6 +4,7 @@ import com.codahale.metrics.health.HealthCheck;
 import javax.sql.DataSource;
 import java.sql.Connection;
 
+// Reports whether MySQL can accept a short validation query, not merely whether a socket opened.
 public final class DatabaseHealthCheck extends HealthCheck {
     private final DataSource database;
 

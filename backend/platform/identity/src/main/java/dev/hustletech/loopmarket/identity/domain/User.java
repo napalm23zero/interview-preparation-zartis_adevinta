@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
+// Links a local person to an external issuer subject; provider credentials stay outside this model.
 public record User(UUID id, UUID personId, String issuer, String externalSubject,
                    Instant createdAt, Instant updatedAt, Instant deletedAt) {
     public User {

@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+// Redis implementation of the session port; TTL expiry keeps abandoned sessions from haunting the cache.
 public final class RedisSessionStore implements SessionStore {
     private final RedisClient redis;
 
@@ -18,6 +19,7 @@ public final class RedisSessionStore implements SessionStore {
     @Override
     public boolean create(String key, Session session, Duration ttl) {
         String value = session.userId() + "|" + session.accountVersion() + "|" + session.expiresAt();
+        // NX prevents a rare token collision from overwriting another live session; PX enforces expiry.
         return "OK".equals(redis.set(key, value, SetParams.setParams().nx().px(ttl.toMillis())));
     }
 

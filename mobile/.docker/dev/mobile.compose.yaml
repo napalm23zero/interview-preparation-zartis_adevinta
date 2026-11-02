@@ -1,4 +1,5 @@
 services:
+  # Flutter workspace placeholder; the pinned platform avoids cross-architecture surprises on Apple Silicon.
   mobile:
     build:
       context: .
