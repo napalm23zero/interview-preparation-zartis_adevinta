@@ -1,5 +1,5 @@
 services:
-  # Placeholder workspace for the future web app; source and dependencies persist for local tooling.
+  # The web client shares the API gateway; the dark side likes one origin.
   frontend:
     build:
       context: .
@@ -20,10 +20,10 @@ services:
     command:
     - sh
     - -c
-    - echo "Development workspace only; application startup is not implemented.";
-      exec sleep infinity
+    - npm ci --no-audit --no-fund && exec npm run dev -- --port "$$PORT"
     environment:
       PORT: ${FRONTEND_PORT:?}
+      API_TARGET: http://backend:${BACKEND_PORT:?}
       TZ: UTC
       LANG: C.UTF-8
 networks:

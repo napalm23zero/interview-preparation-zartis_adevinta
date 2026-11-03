@@ -27,8 +27,9 @@ Thumbs.db
 .gradle/
 **/build/
 
-# Node and Next.js
+# Node and web builds
 node_modules/
+**/dist/
 .next/
 .turbo/
 coverage/

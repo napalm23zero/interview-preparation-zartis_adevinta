@@ -13,21 +13,21 @@
 
 LoopMarket is a second-hand marketplace where sellers create listings, optionally request AI suggestions, and approve publication. Buyers can browse published listings and express interest; interest is a stored signal, not a messaging or payment system.
 
-**Status:** The backend and development authentication are implemented and tested. The web and Flutter applications, external AI providers and production deployment are planned.
+**Status:** The React web application, backend and development authentication are implemented. Flutter, external AI providers and production deployment are planned.
 
 ## Run locally
 
 Requires Docker and Docker Compose 2.20 or later. From the repository root:
 
 ```sh
-./.docker/server.sh dev start backend       # Starts the API, MySQL, Redis and Keycloak
+./.docker/server.sh dev start backend frontend nginx  # Starts the web app, API and ingress
 ./.docker/server.sh dev list                # Available services
 ./.docker/server.sh dev status              # State and memory usage
 ./.docker/server.sh dev logs backend redis  # Follow selected logs
 ./.docker/server.sh dev stop backend        # Stop without deleting data
 ```
 
-The first run creates `.env-dev` from `.env-dev.example` and may download images and build dependencies. `dev` is configured; `qat`, `uat` and `prd` are reserved. With default ports, open [Swagger UI](http://localhost:8080/api/docs/) or the [hello endpoint](http://localhost:8080/api/hello).
+The first run creates `.env-dev` from `.env-dev.example` and may download images and build dependencies. `dev` is configured; `qat`, `uat` and `prd` are reserved. With default ports, open [LoopMarket](http://localhost:8088/) or [Swagger UI](http://localhost:8080/api/docs/) or the [hello endpoint](http://localhost:8080/api/hello).
 
 The `dev` migration context seeds four Star Wars characters, six fictional published listings with bundled illustrative images, a draft with demo suggestions, and sample interests. Luke sells a training saber; Vader is among the interested buyers. These records are created once and do not overwrite listing edits. Development accounts are for local use only:
 
@@ -49,6 +49,14 @@ Use **POST /sessions** in Swagger to obtain an `accessToken`, then select **Auth
 Liquibase runs ordered, versioned changelogs when the backend starts. Existing migration identities and checksums are preserved; add a new changeset for each future change instead of editing an applied migration. Demo data and images are loaded only with the `dev` migration context.
 
 Production deployment is not configured yet. Before deploying, omit the `dev` context, disable demo identity provisioning, provide production services and credentials, back up the database, and review migrations. Migrations are forward-only. See the [migration guide](docs/database-migrations.md) for details.
+
+## Web application
+
+The React and TypeScript client follows the LoopMarket design reference. Buyers can search, filter and browse listings, then sign in to express interest. Sellers can create and edit drafts, upload one photo, review optional demo or local-model suggestions, publish, and manage listings and interest from their dashboard. Publication always requires confirmation. Interest is a stored signal; messaging and payments are not implemented.
+
+The browser uses the same-origin `/api` gateway. The development session is kept in browser session storage and checked by the backend; this local identity flow is not a production authentication design. The frontend dev container installs the locked dependencies on startup. For host development, use `cd frontend && npm ci && npm run dev`; the default API proxy targets `localhost:8080`.
+
+Run `npm test` and `npm run build` in `frontend/`. An opt-in integration test exercises the actual local gateway and creates a published test listing and buyer interest in the development database: `LOOPMARKET_LIVE_TEST=1 npm test`. It requires the backend, frontend, NGINX and demo identities to be running.
 
 ## API and design decisions
 
@@ -94,7 +102,7 @@ LoopMarket
 │   ├── shared                 (generic CRUD, persistence port and common entity)
 │   ├── platform/identity      (identity and Redis session components)
 │   └── product/marketplace    (initial marketplace domain and greeting)
-├── frontend                   (Next.js, React and TypeScript; planned)
+├── frontend                   (React, TypeScript and Vite marketplace)
 ├── mobile                     (Flutter and Dart; planned)
 ├── ai
 │   ├── ai-gateway             (deterministic and Ollama routing)
@@ -110,8 +118,8 @@ LoopMarket
 
 ```mermaid
 flowchart LR
-    Browser[Browser: planned] --> NGINX[NGINX]
-    NGINX --> Web[Web app: planned]
+    Browser[Browser] --> NGINX[NGINX]
+    NGINX --> Web[React web app]
     NGINX --> API[Dropwizard API]
     API --> Identity[Keycloak: dev login]
     API --> Redis[(Redis sessions)]
