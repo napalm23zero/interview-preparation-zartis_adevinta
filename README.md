@@ -13,7 +13,7 @@
 
 LoopMarket is a second-hand marketplace where sellers create listings, optionally request AI suggestions, and approve publication. Buyers can browse published listings and express interest; interest is a stored signal, not a messaging or payment system.
 
-**Status:** The React web application, backend and development authentication are implemented. Flutter, external AI providers and production deployment are planned.
+**Status:** The React web and Flutter mobile clients, backend and development authentication are implemented. External AI providers and production deployment are planned.
 
 ## Run locally
 
@@ -52,11 +52,15 @@ Production deployment is not configured yet. Before deploying, omit the `dev` co
 
 ## Web application
 
-The React and TypeScript client follows the LoopMarket design reference. Buyers can search, filter and browse listings, then sign in to express interest. Sellers can create and edit drafts, upload one photo, review optional demo or local-model suggestions, publish, and manage listings and interest from their dashboard. Publication always requires confirmation. Interest is a stored signal; messaging and payments are not implemented.
+The React and TypeScript client follows the LoopMarket design reference. Buyers can search, filter and browse listings, then sign in to express interest. Sellers can create and edit drafts, upload up to five photos, review local-model suggestions, publish, and manage listings and interest from their dashboard. Publication always requires confirmation. Interest is a stored signal; messaging and payments are not implemented.
 
 The browser uses the same-origin `/api` gateway. The development session is kept in browser session storage and checked by the backend; this local identity flow is not a production authentication design. The frontend dev container installs the locked dependencies on startup. For host development, use `cd frontend && npm ci && npm run dev`; the default API proxy targets `localhost:8080`.
 
 Run `npm test` and `npm run build` in `frontend/`. An opt-in integration test exercises the actual local gateway and creates a published test listing and buyer interest in the development database: `LOOPMARKET_LIVE_TEST=1 npm test`. It requires the backend, frontend, NGINX and demo identities to be running.
+
+## Mobile application
+
+The Flutter client provides the same marketplace essentials: catalog browsing, sign-in, buyer interest, seller listings, photo uploads and reviewed AI suggestions. Sessions remain in memory. Run the development preview with `./.docker/server.sh dev start backend mobile` and open [localhost:3001](http://localhost:3001). Native Android and iOS setup, device API configuration and checks are in the [mobile guide](mobile/README.md).
 
 ## API and design decisions
 
@@ -103,10 +107,10 @@ LoopMarket
 │   ├── platform/identity      (identity and Redis session components)
 │   └── product/marketplace    (initial marketplace domain and greeting)
 ├── frontend                   (React, TypeScript and Vite marketplace)
-├── mobile                     (Flutter and Dart; planned)
+├── mobile                     (Flutter marketplace for Android and iOS)
 ├── ai
 │   ├── ai-gateway             (deterministic and Ollama routing)
-│   └── ollama                 (local model runtime)
+│   └── ollama                 (optional containerized model runtime)
 └── infrastructure
     ├── nginx                  (application ingress)
     ├── mysql / redis          (marketplace data / sessions)
@@ -119,6 +123,7 @@ LoopMarket
 ```mermaid
 flowchart LR
     Browser[Browser] --> NGINX[NGINX]
+    Mobile[Flutter mobile] --> NGINX
     NGINX --> Web[React web app]
     NGINX --> API[Dropwizard API]
     API --> Identity[Keycloak: dev login]
@@ -126,22 +131,23 @@ flowchart LR
     API --> MySQL[(MySQL)]
     API --> Photos[(Photo volume)]
     API --> Gateway[AI gateway]
-    Gateway --> Ollama[Ollama]
+    Gateway --> Ollama[Ollama on host]
     Gateway -. future .-> Providers[External providers]
     Gateway -. future .-> Qdrant[(Qdrant)]
 ```
 
 ## AI configuration
 
-Deterministic suggestions work without a model. For local inference, set `AI_GATEWAY_MODE=ollama` and `OLLAMA_MODEL=qwen2.5:0.5b` in `.env-dev`, then:
+For local suggestions from a photo, run Ollama on the host and set `AI_GATEWAY_MODE=ollama`, `OLLAMA_MODEL` to an installed vision-capable model, and `OLLAMA_URL=http://host.docker.internal:11434` in `.env-dev`. The model can suggest a title, description, category, condition and an estimated price in CAD. Review its output: photos cannot reliably establish condition or market value. City remains seller-provided. On Docker Desktop, the containerized gateway reaches the host through that address, so native Ollama can use the Mac's GPU. Restart the gateway after changing the configuration:
 
 ```sh
-./.docker/server.sh dev start ollama ai-gateway
-docker compose --project-directory "$PWD" --env-file .env-dev -f .docker/docker-compose.yaml \
-  --profile apps --profile mobile exec ollama ollama pull qwen2.5:0.5b
+ollama list
+./.docker/server.sh dev start ai-gateway
 ```
 
-The model download uses network bandwidth and disk space. Local inference was evaluated on 21 cases; output may omit or invent details, and human review remains pending. External provider adapters are future work. See [generation evaluation](docs/generation-evaluation.md).
+If Docker cannot resolve `host.docker.internal`, set `OLLAMA_URL` to the host address reachable from the gateway container. The optional Ollama container publishes port `11435` by default to avoid conflicting with the host's port `11434`; it is not required for host inference. Set `AI_GATEWAY_MODE=deterministic` for suggestions without a model.
+
+Local inference was evaluated on 21 cases; output may omit or invent details, and human review remains pending. External provider adapters are future work. See [generation evaluation](docs/generation-evaluation.md).
 
 ## Verification
 
@@ -195,7 +201,7 @@ erDiagram
     }
 ```
 
-A listing may have at most one **active** photo; older soft-deleted records can remain.
+A listing may have at most five **active** photos; older soft-deleted records can remain.
 
 ### Buyer interest and AI
 

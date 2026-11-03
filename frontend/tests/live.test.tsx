@@ -47,7 +47,7 @@ it.skipIf(!enabled)(
     await user.type(screen.getByLabelText("City"), "Tatooine");
     await user.type(screen.getByLabelText("Price (CAD)"), "42.50");
     const bytes = readFileSync(
-      "../backend/app/src/main/resources/db/demo/photos/01900000-0000-7000-8000-000000000501.png",
+      "../backend/app/src/main/resources/db/demo/photos/01900000-0000-7000-8000-000000000701.png",
     );
     await user.upload(
       screen.getByLabelText("Choose file"),

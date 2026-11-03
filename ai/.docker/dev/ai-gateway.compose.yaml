@@ -24,7 +24,7 @@ services:
       PORT: ${AI_GATEWAY_PORT:?}
       AI_GATEWAY_MODE: ${AI_GATEWAY_MODE:-deterministic}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-}
-      OLLAMA_URL: http://ollama:${OLLAMA_PORT:?}
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
       QDRANT_URL: http://qdrant:${QDRANT_HTTP_PORT:?}
       TZ: UTC
       LANG: C.UTF-8

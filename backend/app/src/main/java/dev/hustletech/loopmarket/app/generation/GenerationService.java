@@ -66,7 +66,7 @@ public final class GenerationService extends GenericCrudService<GenerationEntity
     }
     private boolean isStale(GenerationEntity attempt) {
         return "PROCESSING".equals(attempt.status())
-                && !attempt.getUpdatedAt().plusSeconds(60).isAfter(clock.instant());
+                && !attempt.getUpdatedAt().plusSeconds(140).isAfter(clock.instant());
     }
     @Override protected GenerationEntity createEntity(Create input) {
         GenerationEntity attempt = new GenerationEntity(input, actor, fingerprint(input));

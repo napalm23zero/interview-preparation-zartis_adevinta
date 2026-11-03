@@ -28,7 +28,7 @@ class GatewayClientTest {
             assertEquals("BOOKS", result.suggestions().get("category"));
             body.set("{\"provider\":\"ollama\",\"model\":\"local\",\"suggestions\":{\"title\":\"<script>\"}}");
             assertThrows(java.io.IOException.class, () -> client.generate(Map.of("title", "Book")));
-            body.set("{\"provider\":\"ollama\",\"model\":\"local\",\"suggestions\":{\"price\":\"1\"}}");
+            body.set("{\"provider\":\"ollama\",\"model\":\"local\",\"suggestions\":{\"price\":\"-1\"}}");
             assertThrows(java.io.IOException.class, () -> client.generate(Map.of("title", "Book")));
             body.set("{\"provider\":\"ollama\",\"model\":\"local\",\"suggestions\":{\"category\":\"SECRET_PLANS\"}}");
             assertThrows(java.io.IOException.class, () -> client.generate(Map.of("title", "Book")));

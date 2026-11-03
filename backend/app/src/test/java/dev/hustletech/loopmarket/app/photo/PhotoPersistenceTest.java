@@ -24,7 +24,7 @@ class PhotoPersistenceTest {
             .addEntityClass(PersonEntity.class).addEntityClass(AccountEntity.class).build();
     private final java.nio.file.Path storage = java.nio.file.Path.of(System.getProperty("java.io.tmpdir"), "loopmarket-photos-" + UUID.randomUUID());
 
-    @Test void photoIsPendingOwnerScopedAndUniqueForActiveListing() {
+    @Test void photosArePendingOwnerScopedAndLimitedToFive() {
         UUID owner = owner();
         UUID stranger = UUID.randomUUID();
         ListingService listings = new ListingService(new GenericHibernateRepository<>(database.getSessionFactory(), ListingEntity.class), Clock.systemUTC(), owner, database.getSessionFactory());
@@ -34,6 +34,7 @@ class PhotoPersistenceTest {
         assertThrows(ClientErrorException.class, () -> database.inTransaction(() -> service(stranger).create(input)));
         PhotoEntity photo = database.inTransaction(() -> photos.create(input));
         assertEquals("PENDING", photo.validationStatus());
+        for (int index = 1; index < 5; index++) database.inTransaction(() -> photos.create(input));
         assertThrows(ClientErrorException.class, () -> database.inTransaction(() -> photos.create(input)));
         database.inTransaction(() -> { assertEquals(0, service(stranger).count()); return null; });
     }
@@ -63,7 +64,9 @@ class PhotoPersistenceTest {
         PhotoService photos = service(owner);
         UUID photo = database.inTransaction(() -> photos.create(new PhotoService.Input(listing, "image/png", 1)).getId());
         PublicPhotoResource publicPhotos = new PublicPhotoResource(database.getSessionFactory(), storage, 20971520);
+        PublicPhotosResource gallery = new PublicPhotosResource(database.getSessionFactory(), storage, 20971520);
         assertEquals(404, database.inTransaction(() -> publicPhotos.content(listing).getStatus()));
+        assertEquals(404, database.inTransaction(() -> gallery.list(listing).getStatus()));
         java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
         assertTrue(javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", bytes));
         database.inTransaction(() -> photos.upload(photo, new PhotoService.Content(java.util.Base64.getEncoder().encodeToString(bytes.toByteArray()))));
@@ -71,6 +74,9 @@ class PhotoPersistenceTest {
         database.inTransaction(() -> { database.getSessionFactory().getCurrentSession().createMutationQuery("update ListingEntity set status = 'PUBLISHED' where id = :id").setParameter("id", listing).executeUpdate(); return null; });
         var response = database.inTransaction(() -> publicPhotos.content(listing));
         assertEquals(200, response.getStatus());
+        assertEquals(java.util.List.of(photo), database.inTransaction(() -> gallery.list(listing).getEntity()));
+        assertEquals(200, database.inTransaction(() -> gallery.content(listing, photo).getStatus()));
+        assertEquals(404, database.inTransaction(() -> gallery.content(listing, UUID.randomUUID()).getStatus()));
         assertArrayEquals(bytes.toByteArray(), (byte[]) response.getEntity());
         database.inTransaction(() -> { database.getSessionFactory().getCurrentSession().createMutationQuery("update AccountEntity set deletedAt = :now where id = :id").setParameter("now", java.time.Instant.now()).setParameter("id", owner).executeUpdate(); return null; });
         assertEquals(404, database.inTransaction(() -> publicPhotos.content(listing).getStatus()));

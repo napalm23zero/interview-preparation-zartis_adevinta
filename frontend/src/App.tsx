@@ -23,7 +23,7 @@ const categories = [
   "BOOKS",
   "OTHER",
 ];
-const conditions = ["NEW", "LIKE_NEW", "GOOD", "FAIR", "USED"];
+const conditions = ["NEW", "LIKE_NEW", "GOOD", "FAIR", "USED", "BAD", "VERY_BAD"];
 const empty = {
   title: "",
   description: "",
@@ -613,6 +613,8 @@ function Detail({
   navigate: Navigate;
 }) {
   const [item, setItem] = useState<Listing | null>(null);
+  const [photoIds, setPhotoIds] = useState<string[]>([]);
+  const [selectedPhoto, setSelectedPhoto] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
@@ -625,6 +627,9 @@ function Detail({
       .catch((e) => {
         if (active) setError(message(e));
       });
+    api<string[]>(`/catalog/${id}/photos`).then((value) => {
+      if (active) { setPhotoIds(value); setSelectedPhoto(value[0] || ""); }
+    }).catch((e) => { if (active) setError(message(e)); });
     return () => {
       active = false;
     };
@@ -655,8 +660,9 @@ function Detail({
       {!item && !error && <p role="status">Loading listing...</p>}
       {item && (
         <div className="detail-grid">
-          <div className="detail-image">
-            <img src={`/api/catalog/${id}/photo`} alt={item.title} />
+          <div>
+            <div className="detail-image"><img src={selectedPhoto ? `/api/catalog/${id}/photos/${selectedPhoto}` : `/api/catalog/${id}/photo`} alt={item.title} /></div>
+            {photoIds.length > 1 && <div className="photo-list">{photoIds.map((photoId, index) => <button className="photo-thumbnail" type="button" key={photoId} onClick={() => setSelectedPhoto(photoId)} aria-label={`View photo ${index + 1}`} aria-pressed={selectedPhoto === photoId}><img src={`/api/catalog/${id}/photos/${photoId}`} alt="" /></button>)}</div>}
           </div>
           <div className="detail-info">
             <div className="eyebrow">
@@ -932,6 +938,22 @@ function Dashboard({ token, navigate }: { token: string; navigate: Navigate }) {
   );
 }
 
+function PhotoThumbnail({ photo, token, select }: { photo: Photo; token: string; select: () => void }) {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    const controller = new AbortController();
+    let objectUrl = "";
+    if (photo.validationStatus === "VALID") {
+      fetch(`/api/photos/${photo.id}/content`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: controller.signal })
+        .then((response) => { if (!response.ok) throw new Error("Photo unavailable"); return response.blob(); })
+        .then((blob) => { if (!controller.signal.aborted) { objectUrl = URL.createObjectURL(blob); setUrl(objectUrl); } })
+        .catch(() => { if (!controller.signal.aborted) setUrl(""); });
+    }
+    return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [photo, token]);
+  return <button type="button" className="photo-thumbnail" onClick={select} aria-label="View photo">{url ? <img src={url} alt="" /> : "Photo pending"}</button>;
+}
+
 function Editor({
   token,
   navigate,
@@ -946,19 +968,64 @@ function Editor({
   const [item, setItem] = useState<Listing | null>(null);
   const [fields, setFields] = useState<Fields>(empty);
   const [photo, setPhoto] = useState<Photo | null>(null);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const [file, setFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [publicationUncertain, setPublicationUncertain] = useState(false);
   const [loading, setLoading] = useState(!!id);
-  const [mode, setMode] = useState("DETERMINISTIC");
-  const [suggestions, setSuggestions] = useState<Generation | null>(null);
+  const [models, setModels] = useState<string[]>([]);
+  const [model, setModel] = useState("");
+  const [modelError, setModelError] = useState("");
   const revision = useRef(0);
   const savedRevision = useRef(0);
   const createKey = useRef(key());
   const createPayload = useRef<ReturnType<typeof payload> | null>(null);
   const publicationKey = useRef(key());
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    api<{ models: string[]; defaultModel: string | null }>("/generations/models", token)
+      .then((result) => {
+        if (!active) return;
+        if (!Array.isArray(result.models) || !result.models.every((name) => typeof name === "string")) throw new Error("Invalid model list");
+        setModels(result.models);
+        setModel(result.defaultModel && result.models.includes(result.defaultModel) ? result.defaultModel : result.models[0] || "");
+        setModelError(result.models.length ? "" : "No local models are installed.");
+      })
+      .catch(() => { if (active) setModelError("Could not load local models. Check that Ollama is running."); });
+    return () => { active = false; };
+  }, [token]);
+  useEffect(() => {
+    const controller = new AbortController();
+    let url: string | undefined;
+    setPhotoPreview(null);
+    const show = async () => {
+      try {
+        let image: Blob;
+        if (file) image = file;
+        else if (photo?.validationStatus === "VALID" && token) {
+          const response = await fetch(`/api/photos/${photo.id}/content`, {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+            signal: controller.signal,
+          });
+          if (!response.ok) throw new Error("Could not load the saved photo.");
+          image = await response.blob();
+        } else return;
+        if (controller.signal.aborted) return;
+        url = URL.createObjectURL(image);
+        setPhotoPreview(url);
+      } catch (error) {
+        if (!controller.signal.aborted) setError(message(error));
+      }
+    };
+    void show();
+    return () => { controller.abort(); if (url) URL.revokeObjectURL(url); };
+  }, [file, photo, token]);
   useEffect(() => {
     if (!id || !token) return;
     let active = true;
@@ -967,20 +1034,21 @@ function Editor({
       try {
         const result = await api<Listing>(`/users/me/listings/${id}`, token);
         let page = 1;
-        let found: Photo | undefined;
+        const found: Photo[] = [];
         let response: Page<Photo>;
         do {
           response = await api<Page<Photo>>(
             `/photos?page=${page}&size=50`,
             token,
           );
-          found = response.content.find((p) => p.listingId === id);
+          found.push(...response.content.filter((p) => p.listingId === id));
           page++;
-        } while (!found && (page - 1) * response.size < response.total);
+        } while ((page - 1) * response.size < response.total);
         if (active) {
           setItem(result);
           setFields(fieldsFrom(result));
-          setPhoto(found || null);
+          setPhotos(found);
+          setPhoto(found[0] || null);
         }
       } catch (e) {
         if (active) setError(message(e));
@@ -996,7 +1064,6 @@ function Editor({
   const change = (name: keyof Fields, value: string) => {
     revision.current++;
     markDirty(true);
-    setSuggestions(null);
     setFields((current) => ({ ...current, [name]: value }));
   };
   // Keep request identities stable across retries; duplicate transmissions are no match for the Force.
@@ -1050,8 +1117,9 @@ function Editor({
     if (!file) return;
     if (!["image/jpeg", "image/png"].includes(file.type) || file.size === 0)
       throw new Error("Choose a non-empty JPEG or PNG.");
-    let current = photo;
+    let current = photos.find((candidate) => candidate.validationStatus === "PENDING") || null;
     if (!current) {
+      if (photos.length >= 5) throw new Error("You can add up to five photos.");
       current = await api<Photo>(
         "/photos",
         token,
@@ -1061,7 +1129,7 @@ function Editor({
           byteSize: file.size,
         }),
       );
-      setPhoto(current);
+      setPhotos((existing) => [...existing, current!]);
     } else if (current.validationStatus === "PENDING") {
       current = await api<Photo>(
         `/photos/${current.id}`,
@@ -1071,7 +1139,7 @@ function Editor({
           "PUT",
         ),
       );
-      setPhoto(current);
+      setPhotos((existing) => existing.map((p) => p.id === current!.id ? current! : p));
     }
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -1084,6 +1152,7 @@ function Editor({
       token,
       json({ base64 }, "PUT"),
     );
+    setPhotos((existing) => existing.map((p) => p.id === uploaded.id ? uploaded : p));
     setPhoto(uploaded);
     setFile(null);
     markDirty(revision.current !== savedRevision.current);
@@ -1102,14 +1171,28 @@ function Editor({
       setBusy(false);
     }
   };
-  const generate = async () => {
+  const removePhoto = async (selected: Photo) => {
     setBusy(true);
     setError("");
+    try {
+      await api(`/photos/${selected.id}`, token, { method: "DELETE" });
+      const remaining = photos.filter((p) => p.id !== selected.id);
+      setPhotos(remaining);
+      if (photo?.id === selected.id) setPhoto(remaining[0] || null);
+      revision.current++;
+      setNotice("Photo removed.");
+    } catch (e) { setError(message(e)); }
+    finally { setBusy(false); }
+  };
+  const generate = async () => {
+    setBusy(true);
+    setGenerating(true);
+    setError("");
     setNotice("");
-    setSuggestions(null);
     const requested = revision.current;
     try {
       const saved = await save();
+      await upload(saved);
       const requestKey = key();
       let result = await api<Generation>(
         "/generations",
@@ -1119,12 +1202,12 @@ function Editor({
           requestKey,
           inputVersion: saved.version,
           clientRevision: String(requested),
-          mode,
+          mode: "LOCAL",
         }),
       );
-      if (mode === "LOCAL") {
+      {
         result = await api<Generation>(
-          `/generations/${result.id}/execute`,
+          `/generations/${result.id}/execute?model=${encodeURIComponent(model)}`,
           token,
           { method: "POST" },
         );
@@ -1145,10 +1228,23 @@ function Editor({
         );
         return;
       }
-      setSuggestions(result);
+      const proposed = result.suggestions || {};
+      const applied = ["title", "description", "category", "condition", "price"].filter(
+        (name) => proposed[name] && !fields[name as keyof Fields].trim() && (name !== "price" || fields.currency === "CAD"),
+      );
+      if (applied.length) {
+        revision.current++;
+        markDirty(true);
+        setFields((current) => ({
+          ...current,
+          ...Object.fromEntries(applied.map((name) => [name, proposed[name]])),
+        }));
+        setNotice("Suggestions filled the empty fields. Review them before saving or publishing.");
+      } else setNotice("No empty fields were available for the generated suggestions.");
     } catch (e) {
       setError(`${message(e)} You can continue editing manually.`);
     } finally {
+      setGenerating(false);
       setBusy(false);
     }
   };
@@ -1245,9 +1341,14 @@ function Editor({
       <div className="editor-grid">
         <div className="editor-main">
           <section className="panel form-section">
-            <h2>Item photo</h2>
-            <p>One clear photo helps your item find its next home.</p>
+            <h2>Item photos</h2>
+            <p>Add up to five photos. {photos.length} of 5 uploaded.</p>
+            {photos.length > 0 && <div className="photo-list">{photos.map((saved) => <div key={saved.id}>
+              <PhotoThumbnail photo={saved} token={token} select={() => { setFile(null); setPhoto(saved); }} />
+              <button type="button" disabled={disabled || item?.status !== "DRAFT"} onClick={() => removePhoto(saved)}>Remove</button>
+            </div>)}</div>}
             <div className="upload">
+              {photoPreview && <img className="upload-preview" src={photoPreview} alt="Selected item" />}
               <div className="upload-icon">⇧</div>
               <b>
                 {file
@@ -1262,7 +1363,7 @@ function Editor({
                 <input
                   type="file"
                   accept="image/jpeg,image/png"
-                  disabled={disabled}
+                  disabled={disabled || item?.status === "PUBLISHED" || (photos.length >= 5 && !photos.some((p) => p.validationStatus === "PENDING"))}
                   onChange={(e) => {
                     setFile(e.target.files?.[0] || null);
                     markDirty(true);
@@ -1369,76 +1470,34 @@ function Editor({
             <div className="eyebrow ai-label">YOUR CREATIVE CO-PILOT</div>
             <h2>Need a little inspiration?</h2>
             <p>
-              Generate suggestions from your saved item details. Review every
-              suggestion before applying it.
+              Generate suggestions from your photo and saved item details. Empty fields
+              are filled for you to review; existing details stay unchanged.
             </p>
             <label>
-              Suggestion mode
+              Local model
               <select
-                value={mode}
+                value={model}
                 disabled={disabled || item?.status === "PUBLISHED"}
-                onChange={(e) => setMode(e.target.value)}
+                onChange={(e) => setModel(e.target.value)}
               >
-                <option value="DETERMINISTIC">Demo suggestions</option>
-                <option value="LOCAL">Local model</option>
+                {!models.length && <option value="">No model available</option>}
+                {models.map((name) => <option key={name} value={name}>{name}</option>)}
               </select>
             </label>
+            {modelError && <p role="alert">{modelError}</p>}
+            <div className="generation-action">
             <button
               className="button ai-button full"
-              disabled={disabled || item?.status === "PUBLISHED"}
+              disabled={disabled || !model || item?.status === "PUBLISHED"}
               onClick={generate}
             >
               ✦ Generate suggestions
             </button>
-            <p className="fine-print">
-              Demo mode is deterministic. Local mode uses the configured local
-              gateway. Suggestions may be inaccurate.
-            </p>
-            <div aria-live="polite">
-              {suggestions?.suggestions && (
-                <div className="suggestions">
-                  <h3>Review suggestions</h3>
-                  <p className="fine-print">
-                    {suggestions.provider || suggestions.mode}
-                    {suggestions.model ? ` · ${suggestions.model}` : ""}
-                  </p>
-                  {Object.entries(suggestions.suggestions)
-                    .filter(([name]) =>
-                      ["title", "description", "category"].includes(name),
-                    )
-                    .map(([name, value]) => (
-                      <div className="suggestion" key={name}>
-                        <b>{label(name)}</b>
-                        <p>{value}</p>
-                        <button
-                          className="button secondary"
-                          onClick={() => {
-                            revision.current++;
-                            markDirty(true);
-                            setFields((current) => ({
-                              ...current,
-                              [name]: value,
-                            }));
-                            setSuggestions(
-                              (current) =>
-                                current && {
-                                  ...current,
-                                  suggestions: Object.fromEntries(
-                                    Object.entries(
-                                      current.suggestions || {},
-                                    ).filter(([field]) => field !== name),
-                                  ),
-                                },
-                            );
-                          }}
-                        >
-                          Use suggestion
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              )}
+            {generating && <span className="generation-progress" role="status"><span className="generation-spinner" aria-hidden="true" />Generating…</span>}
             </div>
+            <p className="fine-print">
+              Price and condition are estimates based on the available details and may be inaccurate. Review them before saving.
+            </p>
           </section>
           <section className="panel tips">
             <h3>✦ A good listing goes a long way</h3>

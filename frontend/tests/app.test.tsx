@@ -6,7 +6,6 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../src/App";
@@ -50,10 +49,37 @@ afterEach(() => {
 });
 
 describe("marketplace journey", () => {
+  it("keeps existing photos when adding a fifth and disables further uploads", async () => {
+    sessionStorage.setItem("loopmarket-session", "session");
+    history.replaceState({}, "", "/listings/item-1/edit");
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: vi.fn(() => "blob:photo"), revokeObjectURL: vi.fn() }));
+    const existing = Array.from({ length: 4 }, (_, index) => ({ id: `photo-${index}`, listingId: "item-1", validationStatus: "VALID" }));
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url === "/api/users/me") return reply({ id: "seller-1", displayName: "Luke", role: "USER" });
+      if (url === "/api/users/me/listings/item-1") return reply(listing);
+      if (url === "/api/generations/models") return reply({ models: ["vision"], defaultModel: "vision" });
+      if (url.startsWith("/api/photos?page=")) return reply(page(existing));
+      if (url === "/api/photos" && options?.method === "POST") return reply({ id: "photo-4", listingId: "item-1", validationStatus: "PENDING" });
+      if (url === "/api/photos/photo-4/content" && options?.method === "PUT") return reply({ id: "photo-4", listingId: "item-1", validationStatus: "VALID" });
+      if (url.startsWith("/api/photos/") && url.endsWith("/content")) return new Response(new Blob(["image"]), { status: 200 });
+      return reply({}, 404);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText(/4 of 5 uploaded/i);
+    await user.upload(screen.getByLabelText("Choose file"), new File(["image"], "new.png", { type: "image/png" }));
+    await user.click(screen.getByRole("button", { name: "Upload photo" }));
+    await screen.findByText(/5 of 5 uploaded/i);
+    expect(screen.getAllByRole("button", { name: "View photo" })).toHaveLength(5);
+    expect((screen.getByLabelText("Choose file") as HTMLInputElement).disabled).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith("/api/photos/photo-4/content", expect.objectContaining({ method: "PUT" }));
+  });
   it("browses, signs in and registers interest on the original listing", async () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       if (url.startsWith("/api/catalog?")) return reply(page([listing]));
       if (url === "/api/catalog/item-1") return reply(listing);
+      if (url === "/api/catalog/item-1/photos") return reply(["photo-1", "photo-2"]);
       if (url === "/api/sessions") return reply({ accessToken: "session" });
       if (url === "/api/users/me")
         return reply({ id: "buyer-1", displayName: "Vader", role: "USER" });
@@ -67,6 +93,8 @@ describe("marketplace journey", () => {
     await user.click(
       await screen.findByRole("button", { name: "View Training saber" }),
     );
+    await user.click(await screen.findByRole("button", { name: "View photo 2" }));
+    expect((screen.getByAltText("Training saber") as HTMLImageElement).src).toContain("/photos/photo-2");
     await user.click(
       await screen.findByRole("button", { name: /i’m interested/i }),
     );
@@ -92,11 +120,13 @@ describe("marketplace journey", () => {
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       if (url === "/api/users/me")
         return reply({ id: "seller-1", displayName: "Luke", role: "USER" });
+      if (url === "/api/generations/models") return reply({ models: ["vision:latest", "other:latest"], defaultModel: "vision:latest" });
       if (url === "/api/listings" && options?.method === "POST")
         return reply(listing, 201);
       if (url === "/api/listings/item-1" && options?.method === "PUT")
         return reply({ ...listing, version: 1 });
-      if (url === "/api/generations")
+      if (url === "/api/generations") return reply({ id: "generation-1", status: "PENDING" }, 201);
+      if (url === "/api/generations/generation-1/execute?model=other%3Alatest")
         return reply(
           {
             id: "generation-1",
@@ -105,6 +135,9 @@ describe("marketplace journey", () => {
             suggestions: {
               title: "Polished saber",
               description: "A vintage saber",
+              category: "ELECTRONICS",
+              condition: "GOOD",
+              price: "149.99",
             },
           },
           201,
@@ -118,21 +151,19 @@ describe("marketplace journey", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     render(<App />);
+    await user.selectOptions(await screen.findByLabelText("Local model"), "other:latest");
     await user.type(screen.getByLabelText("Title"), "Training saber");
     await user.click(
       screen.getByRole("button", { name: /generate suggestions/i }),
     );
-    const review = await screen.findByText("Review suggestions");
-    const suggestion = review.parentElement!.querySelectorAll(
-      ".suggestion",
-    )[0] as HTMLElement;
-    await user.click(
-      within(suggestion).getByRole("button", { name: /use suggestion/i }),
-    );
-    expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe(
-      "Polished saber",
-    );
-    expect(screen.getByText("A vintage saber")).toBeTruthy();
+    await screen.findByText(/suggestions filled the empty fields/i);
+    expect(fetchMock).toHaveBeenCalledWith("/api/generations/generation-1/execute?model=other%3Alatest", expect.objectContaining({ method: "POST" }));
+    expect((screen.getByLabelText("Description") as HTMLTextAreaElement).value).toBe("A vintage saber");
+    expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe("Training saber");
+    expect((screen.getByLabelText("Category") as HTMLSelectElement).value).toBe("ELECTRONICS");
+    expect((screen.getByLabelText("Condition") as HTMLSelectElement).value).toBe("GOOD");
+    expect((screen.getByLabelText("Price (CAD)") as HTMLInputElement).value).toBe("149.99");
+    expect(screen.queryByRole("button", { name: /use suggestion/i })).toBeNull();
     await user.click(screen.getByRole("button", { name: /review & publish/i }));
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -172,8 +203,10 @@ describe("marketplace journey", () => {
       vi.fn(async (url: string) => {
         if (url === "/api/users/me")
           return reply({ id: "seller-1", displayName: "Luke", role: "USER" });
+        if (url === "/api/generations/models") return reply({ models: ["vision:latest"], defaultModel: "vision:latest" });
         if (url === "/api/listings") return reply(listing, 201);
-        if (url === "/api/generations")
+        if (url === "/api/generations") return reply({ id: "g", status: "PENDING" }, 201);
+        if (url === "/api/generations/g/execute?model=vision%3Alatest")
           return new Promise<Response>((resolve) => {
             complete = resolve;
           });
@@ -187,6 +220,7 @@ describe("marketplace journey", () => {
       screen.getByRole("button", { name: /generate suggestions/i }),
     );
     await waitFor(() => expect(complete).toBeDefined());
+    expect(screen.getByRole("status").textContent).toContain("Generating");
     // A programmatic input change exercises the race even while controls are disabled.
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Newer edit" },

@@ -34,6 +34,7 @@ import dev.hustletech.loopmarket.app.interest.InterestResource;
 import dev.hustletech.loopmarket.app.photo.PhotoEntity;
 import dev.hustletech.loopmarket.app.photo.PhotoResource;
 import dev.hustletech.loopmarket.app.photo.PublicPhotoResource;
+import dev.hustletech.loopmarket.app.photo.PublicPhotosResource;
 import dev.hustletech.loopmarket.app.generation.GenerationEntity;
 import dev.hustletech.loopmarket.app.generation.GenerationResource;
 
@@ -96,7 +97,8 @@ public final class LoopMarketApplication extends Application<LoopMarketConfigura
         environment.jersey().register(new InterestResource(hibernate.getSessionFactory()));
         environment.jersey().register(new PhotoResource(hibernate.getSessionFactory(), java.nio.file.Path.of(configuration.getPhotoStoragePath()), configuration.getPhotoMaxBytes()));
         environment.jersey().register(new PublicPhotoResource(hibernate.getSessionFactory(), java.nio.file.Path.of(configuration.getPhotoStoragePath()), configuration.getPhotoMaxBytes()));
-        environment.jersey().register(new GenerationResource(hibernate.getSessionFactory(), configuration.getAiGatewayUrl(), environment.getObjectMapper()));
+        environment.jersey().register(new PublicPhotosResource(hibernate.getSessionFactory(), java.nio.file.Path.of(configuration.getPhotoStoragePath()), configuration.getPhotoMaxBytes()));
+        environment.jersey().register(new GenerationResource(hibernate.getSessionFactory(), configuration.getAiGatewayUrl(), environment.getObjectMapper(), java.nio.file.Path.of(configuration.getPhotoStoragePath())));
         if (configuration.isSessionsEnabled()) {
             // Sessions are optional for local smoke tests; when enabled, Redis and the filter protect requests.
             RedisClient redis = RedisClient.create(configuration.getRedisUrl());

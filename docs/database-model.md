@@ -70,7 +70,7 @@ Metadata for the single listing photo; the image itself lives in the configured 
 | `media_type`, `byte_size` | Validated image metadata. |
 | `validation_status` | Photo validation state. |
 
-At most one active photo is allowed per listing; a generated nullable column and unique constraint enforce this in MySQL. A replacement is validated and written under a new key before the database reference changes, including for published listings. Rejected images leave the previous reference intact. Old files and files written before a failed database transaction are retained; orphan cleanup is not implemented.
+At most five active photos are allowed per listing; the photo service locks the listing while counting and creating photos. A replacement is validated and written under a new key before the database reference changes, including for published listings. Rejected images leave the previous reference intact. Old files and files written before a failed database transaction are retained; orphan cleanup is not implemented.
 
 ### `interests`
 
@@ -122,7 +122,7 @@ flowchart LR
 ## Relationships and integrity
 
 - Each user references exactly one person; each person has at most one user. A user owns many listings and can express interest in many listings.
-- A listing has zero or one active photo, many interests and many generation attempts.
+- A listing has zero to five active photos, many interests and many generation attempts.
 - Foreign keys preserve references; soft-deleted data is filtered according to the caller and operation.
 - Price uses an exact decimal type. Precision, supported categories and field limits remain product decisions.
 - Authorization, listing state transitions and preventing self-interest are enforced by the backend. Database foreign keys and unique constraints reinforce the rules where possible.

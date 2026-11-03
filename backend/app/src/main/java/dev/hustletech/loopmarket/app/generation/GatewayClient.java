@@ -36,13 +36,20 @@ final class GatewayClient {
     }
 
     Result generate(Map<String, String> facts) throws IOException, InterruptedException {
-        byte[] body = json.writeValueAsBytes(Map.of("facts", facts));
-        HttpRequest request = HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(20))
+        Map<String, String> fields = new LinkedHashMap<>(facts);
+        String image = fields.remove("image");
+        String model = fields.remove("model");
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("facts", fields);
+        if (image != null) payload.put("image", image);
+        if (model != null) payload.put("model", model);
+        byte[] body = json.writeValueAsBytes(payload);
+        HttpRequest request = HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(100))
                 .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
         var future = http.sendAsync(request, info -> new LimitedBody());
         try {
-            HttpResponse<byte[]> response = future.get(20, TimeUnit.SECONDS);
-            if (response.statusCode() != 200) throw new IOException("Gateway unavailable");
+            HttpResponse<byte[]> response = future.get(100, TimeUnit.SECONDS);
+            if (response.statusCode() != 200) throw new IOException("Gateway returned HTTP " + response.statusCode());
             return validate(json.readTree(response.body()));
         } catch (TimeoutException exception) {
             future.cancel(true);
@@ -53,6 +60,15 @@ final class GatewayClient {
         } catch (ExecutionException exception) {
             throw new IOException("Gateway request failed", exception.getCause());
         }
+    }
+
+    JsonNode models() throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder(endpoint.resolve("/models")).timeout(Duration.ofSeconds(8)).GET().build();
+        var response = http.send(request, info -> new LimitedBody());
+        if (response.statusCode() != 200) throw new IOException("Gateway unavailable");
+        JsonNode result = json.readTree(response.body());
+        if (!result.path("models").isArray()) throw new IOException("Invalid model list");
+        return result;
     }
 
     // Bound the stream before buffering, so an overeager gateway cannot swallow the Death Star's memory.
@@ -94,11 +110,11 @@ final class GatewayClient {
         var names = fields.fieldNames();
         while (names.hasNext()) {
             String name = names.next();
-            int limit = switch (name) { case "title" -> 120; case "description" -> 3000; case "category" -> 80; default -> 0; };
+            int limit = switch (name) { case "title" -> 120; case "description" -> 3000; case "category" -> 80; case "condition" -> 20; case "price" -> 13; default -> 0; };
             JsonNode value = fields.get(name);
             if (limit == 0 || !value.isTextual()) throw new IOException("Unsupported suggestion field");
             String text = value.asText();
-            if (text.isBlank() || text.length() > limit || (name.equals("category") && !ListingCategories.contains(text)) || text.indexOf('<') >= 0 || text.indexOf('>') >= 0
+            if (text.isBlank() || text.length() > limit || (name.equals("category") && !ListingCategories.contains(text)) || (name.equals("condition") && !Set.of("NEW", "LIKE_NEW", "GOOD", "FAIR", "USED", "BAD", "VERY_BAD").contains(text)) || (name.equals("price") && !text.matches("(?:0|[1-9][0-9]{0,9})(?:\\.[0-9]{1,2})?")) || text.indexOf('<') >= 0 || text.indexOf('>') >= 0
                     || text.chars().anyMatch(c -> c < 32 && c != '\n' && c != '\r' && c != '\t')) {
                 throw new IOException("Invalid suggestion text");
             }

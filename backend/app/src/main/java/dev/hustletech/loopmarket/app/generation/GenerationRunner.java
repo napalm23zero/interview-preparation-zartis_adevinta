@@ -24,19 +24,26 @@ final class GenerationRunner {
     private final SessionFactory sessions;
     private final Gateway gateway;
     private final Clock clock;
+    private final java.nio.file.Path photoStorage;
 
     GenerationRunner(SessionFactory sessions, Gateway gateway, Clock clock) {
-        this.sessions = sessions; this.gateway = gateway; this.clock = clock;
+        this(sessions, gateway, clock, null);
+    }
+    GenerationRunner(SessionFactory sessions, Gateway gateway, Clock clock, java.nio.file.Path photoStorage) {
+        this.sessions = sessions; this.gateway = gateway; this.clock = clock; this.photoStorage = photoStorage;
     }
 
     GenerationEntity run(UUID id, UUID actor) throws IOException, InterruptedException {
+        return run(id, actor, null);
+    }
+    GenerationEntity run(UUID id, UUID actor, String model) throws IOException, InterruptedException {
         Claim claim = transaction(session -> {
             GenerationEntity attempt = session.find(GenerationEntity.class, id, LockModeType.PESSIMISTIC_WRITE);
             if (attempt == null || attempt.isDeleted() || !actor.equals(attempt.actorId())) throw new NotFoundException();
             if (!"LOCAL".equals(attempt.mode())) throw new ClientErrorException("Generation is not a local attempt", 409);
             if (!"PENDING".equals(attempt.status())) {
                 // A retry reports the current state; it never summons the provider twice.
-                if ("PROCESSING".equals(attempt.status()) && !attempt.getUpdatedAt().plusSeconds(60).isAfter(clock.instant())) {
+                if ("PROCESSING".equals(attempt.status()) && !attempt.getUpdatedAt().plusSeconds(140).isAfter(clock.instant())) {
                     attempt.status("UNKNOWN");
                     attempt.touch(clock);
                 }
@@ -56,7 +63,24 @@ final class GenerationRunner {
                 if (!ListingCategories.contains((String) values[2])) throw new BadRequestException("Listing category is unsupported");
                 snapshot.put("category", (String) values[2]);
             }
-            if (snapshot.isEmpty()) throw new BadRequestException("A title or description is required");
+            if (photoStorage != null) {
+                var photos = session.createQuery("select p.storageKey from PhotoEntity p where p.listingId = :id and p.deletedAt is null and p.validationStatus = 'VALID' order by p.createdAt desc, p.id asc", String.class)
+                        .setParameter("id", attempt.listingId()).setMaxResults(1).getResultList();
+                if (!photos.isEmpty()) {
+                    String key = photos.get(0);
+                    try {
+                        if (!UUID.fromString(key).toString().equals(key)) throw new IllegalStateException("Invalid stored image key");
+                        var path = photoStorage.resolve(key);
+                        if (java.nio.file.Files.size(path) > 67108864) throw new IllegalStateException("Stored image exceeds the size limit");
+                        snapshot.put("image", java.util.Base64.getEncoder().encodeToString(java.nio.file.Files.readAllBytes(path)));
+                    } catch (IOException | IllegalArgumentException exception) { throw new IllegalStateException("Could not read stored image", exception); }
+                }
+            }
+            if (snapshot.isEmpty()) throw new BadRequestException("A photo or listing details are required");
+            if (model != null && !model.isBlank()) {
+                if (model.length() > 120) throw new BadRequestException("Invalid model");
+                snapshot.put("model", model);
+            }
             attempt.status("PROCESSING");
             attempt.touch(clock);
             return new Claim(null, Map.copyOf(snapshot));

@@ -1,5 +1,5 @@
 services:
-  # Flutter workspace placeholder; the pinned platform avoids cross-architecture surprises on Apple Silicon.
+  # The pinned platform keeps the Flutter toolchain consistent on Apple Silicon.
   mobile:
     build:
       context: .
@@ -21,9 +21,10 @@ services:
     - /bin/sh
     - -c
     command:
-    - echo "Flutter workspace only; no application exists yet. Native iOS builds require
-      macOS/Xcode."; exec sleep infinity
+    - flutter pub get && (flutter run -d web-server --web-hostname 127.0.0.1 --web-port 3002 &); exec dart run tool/dev_proxy.dart
     environment:
+      MOBILE_WEB_PORT: ${MOBILE_WEB_PORT:?}
+      BACKEND_PORT: ${BACKEND_PORT:?}
       TZ: UTC
       LANG: C.UTF-8
 networks:

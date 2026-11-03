@@ -7,7 +7,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.hustletech.loopmarket.app.ProblemResponses;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.core.Context;
@@ -27,10 +29,19 @@ public final class GenerationResource extends GenericCrudResource<GenerationEnti
                        Instant createdAt, Instant updatedAt) {}
     private final SessionFactory sessions;
     private final GenerationRunner runner;
-    public GenerationResource(SessionFactory sessions, String gatewayUrl, ObjectMapper json) {
+    private final GatewayClient gateway;
+    public GenerationResource(SessionFactory sessions, String gatewayUrl, ObjectMapper json, java.nio.file.Path photoStorage) {
         this.sessions = sessions;
-        GatewayClient gateway = new GatewayClient(gatewayUrl, json);
-        this.runner = new GenerationRunner(sessions, gateway::generate, Clock.systemUTC());
+        gateway = new GatewayClient(gatewayUrl, json);
+        this.runner = new GenerationRunner(sessions, gateway::generate, Clock.systemUTC(), photoStorage);
+    }
+
+    @GET @Path("/models") @Produces(MediaType.APPLICATION_JSON)
+    public Response models(@Context SecurityContext security) {
+        if (security == null || security.getUserPrincipal() == null) throw new NotAuthorizedException("Bearer");
+        try { return Response.ok(gateway.models()).build(); }
+        catch (InterruptedException exception) { Thread.currentThread().interrupt(); return Response.status(503).build(); }
+        catch (java.io.IOException exception) { return Response.status(503).build(); }
     }
     @Override protected GenericCrudService<GenerationEntity, GenerationService.Create, GenerationService.Update> authorizedService(
             SecurityContext security, Action action, UUID id) {
@@ -46,13 +57,18 @@ public final class GenerationResource extends GenericCrudResource<GenerationEnti
 
     // No UnitOfWork here: the runner commits its claim before calling the gateway.
     @POST @Path("/{id}/execute") @Produces(MediaType.APPLICATION_JSON)
-    public Response execute(@Context SecurityContext security, @PathParam("id") UUID id) {
+    public Response execute(@Context SecurityContext security, @PathParam("id") UUID id, @QueryParam("model") String model) {
         if (security == null || security.getUserPrincipal() == null) throw new NotAuthorizedException("Bearer");
         try {
-            GenerationEntity attempt = runner.run(id, UUID.fromString(security.getUserPrincipal().getName()));
+            GenerationEntity attempt = runner.run(id, UUID.fromString(security.getUserPrincipal().getName()), model);
             return Response.status("PROCESSING".equals(attempt.status()) ? 202 : 200).entity(toResponse(attempt)).build();
         }
         catch (InterruptedException exception) { Thread.currentThread().interrupt(); return ProblemResponses.gatewayUnavailable(); }
-        catch (java.io.IOException exception) { return ProblemResponses.gatewayUnavailable(); }
+        catch (java.io.IOException exception) {
+            String message = exception.getMessage();
+            java.util.logging.Logger.getLogger(GenerationResource.class.getName()).warning(
+                    "Generation gateway failed: " + (message != null && message.matches("Gateway (returned HTTP [0-9]{3}|timed out|request failed)") ? message : exception.getClass().getSimpleName()));
+            return ProblemResponses.gatewayUnavailable();
+        }
     }
 }

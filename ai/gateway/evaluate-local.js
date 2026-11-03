@@ -17,7 +17,7 @@ async function evaluate(base, expectedModel, fetchImpl = fetch) {
     try {
       const response = await fetchImpl(new URL('/generate', url), {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ facts: item.facts }), signal: AbortSignal.timeout(25000)
+        body: JSON.stringify({ facts: item.facts }), signal: AbortSignal.timeout(100000)
       });
       const body = await response.json();
       const validProvider = response.ok && body.provider === 'ollama' && body.model === expectedModel;
@@ -31,7 +31,7 @@ async function evaluate(base, expectedModel, fetchImpl = fetch) {
   }
   return { recordedAt: new Date().toISOString(), model: expectedModel,
     gatewaySha256: crypto.createHash('sha256').update(fs.readFileSync(require.resolve('./server'))).digest('hex'),
-    settings: { providerTimeoutMs: 15000, maxOutputTokens: 512 }, usage: 'unknown', monetaryCost: 'none (local inference)', results };
+    settings: { providerTimeoutMs: 90000, maxOutputTokens: 512 }, usage: 'unknown', monetaryCost: 'none (local inference)', results };
 }
 
 if (require.main === module) {

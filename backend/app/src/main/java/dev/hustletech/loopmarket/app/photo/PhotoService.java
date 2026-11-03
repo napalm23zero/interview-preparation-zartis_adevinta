@@ -45,7 +45,7 @@ public final class PhotoService extends GenericCrudService<PhotoEntity, PhotoSer
         Long existing = sessions.getCurrentSession().createQuery(
                 "select count(p) from PhotoEntity p where p.listingId = :listing and p.deletedAt is null", Long.class)
                 .setParameter("listing", input.listingId()).getSingleResult();
-        if (existing > 0) throw new ClientErrorException("Listing already has an active photo", 409);
+        if (existing >= 5) throw new ClientErrorException("A listing can have at most five photos", 409);
         return new PhotoEntity(input.listingId(), input.mediaType(), input.byteSize());
     }
     @Override protected void updateEntity(PhotoEntity entity, Input input) {

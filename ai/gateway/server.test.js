@@ -38,6 +38,7 @@ test('ollama mode uses the configured model and rejects unsafe provider output',
     assert.equal(result.model, 'local-model');
     assert.equal(sent.url, 'http://ollama:11434/api/generate');
     assert.equal(sent.body.stream, false);
+    assert.equal(sent.body.think, false);
   });
   const unsafe = async () => new Response(JSON.stringify({ done: true, response: '{"title":"<script>"}' }));
   await withServer({ mode: 'ollama', model: 'local-model', ollamaUrl: 'http://ollama:11434', fetchImpl: unsafe }, async base => {
@@ -53,6 +54,46 @@ test('ollama mode uses the configured model and rejects unsafe provider output',
   });
   await withServer({ mode: 'ollama', model: '', ollamaUrl: 'http://ollama:11434' }, async base => {
     assert.equal((await post(base, { title: 'Book' }))[0], 503);
+  });
+});
+
+test('a photo can generate suggestions without listing text', async () => {
+  let sent;
+  const provider = async (_url, options) => {
+    sent = JSON.parse(options.body);
+    return new Response(JSON.stringify({ done: true, response: '{"title":"Chair","description":"A wooden chair","category":"HOME"}' }));
+  };
+  await withServer({ mode: 'ollama', model: 'vision-model', ollamaUrl: 'http://ollama:11434', fetchImpl: provider }, async base => {
+    const response = await fetch(`${base}/generate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ facts: {}, image: 'YWJj' }) });
+    assert.equal(response.status, 200);
+    assert.deepEqual(sent.images, ['YWJj']);
+    assert.deepEqual(JSON.parse(sent.prompt), {});
+    assert.equal((await response.json()).suggestions.title, 'Chair');
+  });
+});
+
+test('validates estimated condition and price', () => {
+  const { validateFields } = require('./server');
+  assert.deepEqual(validateFields({ condition: 'GOOD', price: 149.99 }), { condition: 'GOOD', price: '149.99' });
+  assert.equal(validateFields({ condition: 'BAD' }).condition, 'BAD');
+  assert.equal(validateFields({ condition: 'VERY_BAD' }).condition, 'VERY_BAD');
+  assert.throws(() => validateFields({ condition: 'PERFECT' }));
+  assert.throws(() => validateFields({ price: '-1' }));
+  assert.throws(() => validateFields({ price: '10.001' }));
+});
+
+test('lists installed models and uses the selected model', async () => {
+  let used;
+  const provider = async (url, options) => {
+    if (url.pathname === '/api/tags') return new Response(JSON.stringify({ models: [{ name: 'vision:a' }, { name: 'vision:b' }] }));
+    used = JSON.parse(options.body).model;
+    return new Response(JSON.stringify({ done: true, response: '{"title":"Chair"}' }));
+  };
+  await withServer({ mode: 'ollama', model: 'vision:a', ollamaUrl: 'http://ollama:11434', fetchImpl: provider }, async base => {
+    assert.deepEqual(await (await fetch(`${base}/models`)).json(), { models: ['vision:a', 'vision:b'], defaultModel: 'vision:a' });
+    const response = await fetch(`${base}/generate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ facts: {}, image: 'YWJj', model: 'vision:b' }) });
+    assert.equal(response.status, 200);
+    assert.equal(used, 'vision:b');
   });
 });
 

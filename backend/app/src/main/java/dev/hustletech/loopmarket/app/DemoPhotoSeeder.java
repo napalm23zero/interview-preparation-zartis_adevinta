@@ -10,7 +10,7 @@ final class DemoPhotoSeeder {
     private DemoPhotoSeeder() {}
     static void seed(Path storage) throws IOException {
         Files.createDirectories(storage);
-        for (int index = 501; index <= 506; index++) {
+        for (int index = 701; index <= 706; index++) {
             String key = "01900000-0000-7000-8000-%012d".formatted(index);
             try (var input = DemoPhotoSeeder.class.getResourceAsStream("/db/demo/photos/" + key + ".png")) {
                 if (input == null) throw new IOException("Missing demo illustration: " + key);

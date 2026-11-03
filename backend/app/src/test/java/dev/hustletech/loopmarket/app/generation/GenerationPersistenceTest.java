@@ -17,7 +17,26 @@ import static org.junit.jupiter.api.Assertions.*;
 // Proves generation request keys are retry-safe and cannot be replayed with a different payload.
 class GenerationPersistenceTest {
     final DAOTestExtension database = DAOTestExtension.newBuilder()
-            .addEntityClass(ListingEntity.class).addEntityClass(GenerationEntity.class).build();
+            .addEntityClass(ListingEntity.class).addEntityClass(GenerationEntity.class)
+            .addEntityClass(dev.hustletech.loopmarket.app.photo.PhotoEntity.class).build();
+
+    @Test void localGenerationUsesValidatedPhotoWithoutText(@org.junit.jupiter.api.io.TempDir java.nio.file.Path storage) throws Exception {
+        UUID actor = UUID.randomUUID();
+        var listings = new ListingService(new GenericHibernateRepository<>(database.getSessionFactory(), ListingEntity.class), Clock.systemUTC(), actor, database.getSessionFactory());
+        UUID listing = database.inTransaction(() -> listings.create(new ListingService.Input(null, null, null, null, null, null, null, null)).getId());
+        var photos = new dev.hustletech.loopmarket.app.photo.PhotoService(new GenericHibernateRepository<>(database.getSessionFactory(), dev.hustletech.loopmarket.app.photo.PhotoEntity.class), Clock.systemUTC(), actor, database.getSessionFactory(), storage, 20971520);
+        var bytes = new java.io.ByteArrayOutputStream();
+        assertTrue(javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", bytes));
+        String image = java.util.Base64.getEncoder().encodeToString(bytes.toByteArray());
+        UUID photo = database.inTransaction(() -> photos.create(new dev.hustletech.loopmarket.app.photo.PhotoService.Input(listing, "image/png", bytes.size())).getId());
+        database.inTransaction(() -> photos.upload(photo, new dev.hustletech.loopmarket.app.photo.PhotoService.Content(image)));
+        UUID id = database.inTransaction(() -> service(actor, false).create(new GenerationService.Create(listing, "photo", 0L, "r1", "LOCAL")).getId());
+        var runner = new GenerationRunner(database.getSessionFactory(), facts -> {
+            assertEquals(java.util.Map.of("image", image), facts);
+            return new GatewayClient.Result("ollama", "vision", java.util.Map.of("title", "Chair"));
+        }, Clock.systemUTC(), storage);
+        assertEquals("Chair", runner.run(id, actor).suggestions().get("title"));
+    }
 
     @Test void requestKeyIsIdempotentAndCannotBeReusedForDifferentInput() {
         UUID actor = UUID.randomUUID();
