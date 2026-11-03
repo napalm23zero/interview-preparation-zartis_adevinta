@@ -13,7 +13,16 @@
 
 LoopMarket is a second-hand marketplace where sellers create listings, optionally request AI suggestions, and approve publication. Buyers can browse published listings and express interest; interest is a stored signal, not a messaging or payment system.
 
-**Status:** The React web and Flutter mobile clients, backend and development authentication are implemented. External AI providers and production deployment are planned.
+**Status:** The React web and Flutter mobile clients, backend and development authentication are implemented. External AI providers and production deployment are planned.  
+
+<p align="center">
+  <img src="docs/img/001 - web.png" 
+alt="Description">
+</p>
+<p align="center">
+  <img src="docs/img/002 - mobile.png" 
+alt="Description">
+</p>
 
 ## Run locally
 
