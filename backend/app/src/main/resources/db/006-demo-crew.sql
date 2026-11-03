@@ -1,0 +1,10 @@
+-- Two more familiar faces join the local cantina; existing records keep their own stories.
+INSERT INTO persons (id, display_name, created_at, updated_at, deleted_at) VALUES
+    (UUID_TO_BIN('01900000-0000-7000-8000-000000000003'), 'Leia Organa', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), NULL),
+    (UUID_TO_BIN('01900000-0000-7000-8000-000000000004'), 'Han Solo', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), NULL)
+ON DUPLICATE KEY UPDATE id = id;
+
+INSERT INTO users (id, person_id, issuer, external_subject, account_role, created_at, updated_at, deleted_at) VALUES
+    (UUID_TO_BIN('01900000-0000-7000-8000-000000000103'), UUID_TO_BIN('01900000-0000-7000-8000-000000000003'), '${identityIssuer}', '01900000-0000-7000-8000-000000000203', 'USER', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), NULL),
+    (UUID_TO_BIN('01900000-0000-7000-8000-000000000104'), UUID_TO_BIN('01900000-0000-7000-8000-000000000004'), '${identityIssuer}', '01900000-0000-7000-8000-000000000204', 'USER', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), NULL)
+ON DUPLICATE KEY UPDATE id = id;

@@ -73,6 +73,10 @@ public final class LoopMarketApplication extends Application<LoopMarketConfigura
         environment.lifecycle().manage(database);
         if (configuration.isMigrationsEnabled()) {
             DatabaseMigrations.run(database, configuration.getMigrationContexts(), configuration.getIdentityIssuer());
+            if (java.util.Arrays.stream(configuration.getMigrationContexts().split(","))
+                    .map(String::trim).anyMatch("dev"::equals)) {
+                DemoPhotoSeeder.seed(java.nio.file.Path.of(configuration.getPhotoStoragePath()));
+            }
         }
         environment.healthChecks().register("database", new DatabaseHealthCheck(database));
         environment.jersey().register(new ProblemResponseFilter());
@@ -106,7 +110,7 @@ public final class LoopMarketApplication extends Application<LoopMarketConfigura
         }
         if (configuration.isDemoUsersEnabled()) {
             environment.lifecycle().manage(new DemoIdentityProvisioner(configuration.getIdentityIssuer(), configuration.getIdentityAdminUser(),
-                    configuration.getIdentityAdminPassword(), environment.getObjectMapper()));
+                    configuration.getIdentityAdminPassword(), environment.getObjectMapper(), database));
         }
         environment.jersey().register(new GreetingResource(new GreetService()));
     }

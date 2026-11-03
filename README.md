@@ -29,16 +29,26 @@ Requires Docker and Docker Compose 2.20 or later. From the repository root:
 
 The first run creates `.env-dev` from `.env-dev.example` and may download images and build dependencies. `dev` is configured; `qat`, `uat` and `prd` are reserved. With default ports, open [Swagger UI](http://localhost:8080/api/docs/) or the [hello endpoint](http://localhost:8080/api/hello).
 
-Development accounts are seeded for local use only:
+The `dev` migration context seeds four Star Wars characters, six fictional published listings with bundled illustrative images, a draft with demo suggestions, and sample interests. Luke sells a training saber; Vader is among the interested buyers. These records are created once and do not overwrite listing edits. Development accounts are for local use only:
 
 | Username | Password | Role |
 |---|---|---|
 | `darth.vader` | `dark-side-1977` | Admin |
 | `luke.skywalker` | `force-1977` | User |
+| `leia.organa` | `rebel-1977` | User |
+| `han.solo` | `falcon-1977` | User |
+
+Development identity provisioning runs in the background; the accounts may take up to a minute to become available after startup. Their demo passwords are restored automatically.
 
 Use **POST /sessions** in Swagger to obtain an `accessToken`, then select **Authorize** and enter the token. The backend issues opaque, 30-minute sessions, checks Redis and the local account on each protected request, and revokes a session on logout. Keycloak verifies the development credentials. These credentials and the development login flow are not a production identity setup.
 
 `photoMaxBytes` in `backend/config.yml` controls the decoded image limit: **20 MiB by default**, configurable from 1 byte to 64 MiB. The development NGINX reads the same setting and accounts for base64 overhead. After a change, run `./.docker/server.sh dev start backend nginx`.
+
+## Database migrations
+
+Liquibase runs ordered, versioned changelogs when the backend starts. Existing migration identities and checksums are preserved; add a new changeset for each future change instead of editing an applied migration. Demo data and images are loaded only with the `dev` migration context.
+
+Production deployment is not configured yet. Before deploying, omit the `dev` context, disable demo identity provisioning, provide production services and credentials, back up the database, and review migrations. Migrations are forward-only. See the [migration guide](docs/database-migrations.md) for details.
 
 ## API and design decisions
 
@@ -48,7 +58,7 @@ Use **POST /sessions** in Swagger to obtain an `accessToken`, then select **Auth
 - **Auditable data:** application tables use UUIDv7 IDs and UTC creation, update and soft-deletion timestamps. Liquibase manages schema changes; Redis stores temporary sessions rather than marketplace data.
 - **Predictable errors:** API errors use `application/problem+json`; validation responses can include field-level details. The frontend can use the attempt status and `GENERATION_OUTCOME_UNKNOWN` to handle an interrupted model call.
 
-Swagger documents the request schemas and examples. See the [frontend integration guide](docs/frontend-api.md) for the complete API flow and [database model](docs/database-model.md) for fields and constraints.
+Swagger documents the request schemas and examples. See the [frontend integration guide](docs/frontend-api.md) for the complete API flow, [database model](docs/database-model.md) for fields and constraints, and [migration guide](docs/database-migrations.md) for changelogs and demo-data isolation.
 
 ## Generic CRUD strategy
 

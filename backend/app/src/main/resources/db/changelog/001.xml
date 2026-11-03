@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.29.xsd"
+                   logicalFilePath="db/changelog.xml">
+    <changeSet id="001-marketplace-schema" author="loopmarket" dbms="mysql">
+        <!-- Accept the pre-comment checksum; the schema is the same imperial blueprint. -->
+        <validCheckSum>9:4fc2dcbd711c887c8183e4df11a937b1</validCheckSum>
+        <sqlFile path="db/001-marketplace-schema.sql" splitStatements="true"/>
+    </changeSet>
+</databaseChangeLog>

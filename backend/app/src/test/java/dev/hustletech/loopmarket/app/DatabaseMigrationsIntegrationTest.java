@@ -29,5 +29,10 @@ class DatabaseMigrationsIntegrationTest {
             query.setString(3, "01900000-0000-7000-8000-000000000202");
             try (var result = query.executeQuery()) { result.next(); assertEquals(2, result.getLong(1)); }
         }
+        try (Connection connection = database.getConnection(); var query = connection.createStatement()) {
+            try (var result = query.executeQuery("SELECT COUNT(*) FROM listings WHERE id IN (UUID_TO_BIN('01900000-0000-7000-8000-000000000301'), UUID_TO_BIN('01900000-0000-7000-8000-000000000302'), UUID_TO_BIN('01900000-0000-7000-8000-000000000303'), UUID_TO_BIN('01900000-0000-7000-8000-000000000304'), UUID_TO_BIN('01900000-0000-7000-8000-000000000305'), UUID_TO_BIN('01900000-0000-7000-8000-000000000306'))")) {
+                assertEquals(true, result.next()); assertEquals(6, result.getLong(1));
+            }
+        }
     }
 }

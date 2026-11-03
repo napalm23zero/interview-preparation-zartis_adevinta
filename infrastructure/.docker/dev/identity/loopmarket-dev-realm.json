@@ -31,6 +31,26 @@
       "firstName": "Luke",
       "lastName": "Skywalker",
       "credentials": [{"type": "password", "value": "force-1977", "temporary": false}]
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000000203",
+      "username": "leia.organa",
+      "email": "leia.organa@example.invalid",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Leia",
+      "lastName": "Organa",
+      "credentials": [{"type": "password", "value": "rebel-1977", "temporary": false}]
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000000204",
+      "username": "han.solo",
+      "email": "han.solo@example.invalid",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Han",
+      "lastName": "Solo",
+      "credentials": [{"type": "password", "value": "falcon-1977", "temporary": false}]
     }
   ]
 }
